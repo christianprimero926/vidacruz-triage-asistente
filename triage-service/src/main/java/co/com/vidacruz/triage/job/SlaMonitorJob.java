@@ -1,11 +1,8 @@
 package co.com.vidacruz.triage.job;
 
-import co.com.vidacruz.triage.config.TriageProperties;
 import co.com.vidacruz.triage.domain.NivelTriage;
 import co.com.vidacruz.triage.repository.PacienteRepository;
 import co.com.vidacruz.triage.service.EscalamientoService;
-import co.com.vidacruz.triage.service.MetricasTriage;
-import java.time.Clock;
 import java.time.Duration;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -22,31 +19,28 @@ public class SlaMonitorJob extends PeriodicJob {
 
     private final PacienteRepository pacienteRepository;
     private final EscalamientoService escalamientoService;
-    private final Clock clock;
-    private final MetricasTriage metricas;
-    private final int lote;
+    private final ContextoJobs contexto;
 
     public SlaMonitorJob(PacienteRepository pacienteRepository, EscalamientoService escalamientoService,
-                         TriageProperties properties, Clock clock, MetricasTriage metricas) {
-        super("sla-monitor", Duration.ofMillis(properties.getJobs().getSlaIntervaloMs()),
-                properties.getJobs().isEnabled());
+                         ContextoJobs contexto) {
+        super("sla-monitor", Duration.ofMillis(contexto.jobs().getSlaIntervaloMs()),
+                Duration.ofMillis(contexto.jobs().getTimeoutCorridaMs()), contexto.jobs().isEnabled());
         this.pacienteRepository = pacienteRepository;
         this.escalamientoService = escalamientoService;
-        this.clock = clock;
-        this.metricas = metricas;
-        this.lote = properties.getJobs().getSlaLote();
+        this.contexto = contexto;
     }
 
     @Override
     public Mono<Void> ejecutar() {
-        return Flux.defer(() -> pacienteRepository.findIdsConSlaVencido(clock.instant(), lote))
+        return Flux.defer(() -> pacienteRepository.findIdsConSlaVencido(contexto.clock().instant(),
+                        contexto.jobs().getSlaLote()))
                 .flatMap(this::escalarSinDetenerElResto, CONCURRENCIA)
                 .then();
     }
 
     private Mono<NivelTriage> escalarSinDetenerElResto(UUID pacienteId) {
         return escalamientoService.escalar(pacienteId)
-                .doOnNext(metricas::escalamiento)
+                .doOnNext(contexto.metricas()::escalamiento)
                 .onErrorResume(error -> {
                     log.error("No se pudo escalar al paciente id={}", pacienteId, error);
                     return Mono.empty();

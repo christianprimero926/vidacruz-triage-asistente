@@ -1,14 +1,12 @@
 package co.com.vidacruz.triage.job;
 
-import co.com.vidacruz.triage.config.TriageProperties;
 import co.com.vidacruz.triage.domain.AlertaReclamada;
 import co.com.vidacruz.triage.exception.CanalAlertaException;
 import co.com.vidacruz.triage.repository.AlertaDespachoRepository;
 import co.com.vidacruz.triage.service.CanalAlerta;
-import co.com.vidacruz.triage.service.MetricasTriage;
 import co.com.vidacruz.triage.service.PoliticaReintento;
-import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -32,36 +30,34 @@ public class AlertaDispatcherJob extends PeriodicJob {
     private final AlertaDespachoRepository repository;
     private final CanalAlerta canal;
     private final PoliticaReintento politica;
-    private final Clock clock;
-    private final MetricasTriage metricas;
-    private final int lote;
+    private final ContextoJobs contexto;
     private final Duration reclamo;
 
     public AlertaDispatcherJob(AlertaDespachoRepository repository, CanalAlerta canal, PoliticaReintento politica,
-                               TriageProperties properties, Clock clock, MetricasTriage metricas) {
-        super("alertas-dispatcher", Duration.ofMillis(properties.getJobs().getAlertasIntervaloMs()),
-                properties.getJobs().isEnabled());
+                               ContextoJobs contexto) {
+        super("alertas-dispatcher", Duration.ofMillis(contexto.jobs().getAlertasIntervaloMs()),
+                Duration.ofMillis(contexto.jobs().getTimeoutCorridaMs()), contexto.jobs().isEnabled());
         this.repository = repository;
         this.canal = canal;
         this.politica = politica;
-        this.clock = clock;
-        this.metricas = metricas;
-        this.lote = properties.getJobs().getAlertasLote();
-        this.reclamo = Duration.ofMillis(properties.getAlertas().getTimeoutMs()).plus(MARGEN_RECLAMO);
+        this.contexto = contexto;
+        this.reclamo = Duration.ofMillis(contexto.properties().getAlertas().getTimeoutMs()).plus(MARGEN_RECLAMO);
     }
 
     @Override
     public Mono<Void> ejecutar() {
-        return Flux.defer(() -> repository.reclamar(clock.instant(), clock.instant().plus(reclamo), lote))
+        Instant ahora = contexto.clock().instant();
+        return Flux.defer(() -> repository.reclamar(ahora, ahora.plus(reclamo),
+                contexto.jobs().getAlertasLote()))
                 .flatMap(this::despachar, CONCURRENCIA)
                 .then();
     }
 
     private Mono<Void> despachar(AlertaReclamada alerta) {
         return canal.enviar(alerta.aNotificacion())
-                .then(Mono.defer(() -> repository.marcarEnviada(alerta.id(), clock.instant())))
+                .then(Mono.defer(() -> repository.marcarEnviada(alerta.id(), contexto.clock().instant())))
                 .doOnSuccess(filas -> {
-                    metricas.alerta(RESULTADO_ENVIADA);
+                    contexto.metricas().alerta(RESULTADO_ENVIADA);
                     log.info("Alerta id={} enviada en el intento {}", alerta.id(), alerta.intentos());
                 })
                 .onErrorResume(error -> registrarFallo(alerta, error))
@@ -75,9 +71,9 @@ public class AlertaDispatcherJob extends PeriodicJob {
         log.warn("Alerta id={} no se pudo enviar (intento {}): {}", alerta.id(), alerta.intentos(), motivo);
         if (definitivo) {
             return repository.marcarFallida(alerta.id(), motivo)
-                    .doOnSuccess(filas -> metricas.alerta(RESULTADO_FALLIDA));
+                    .doOnSuccess(filas -> contexto.metricas().alerta(RESULTADO_FALLIDA));
         }
-        return repository.reprogramar(alerta.id(), clock.instant().plus(politica.espera(alerta.intentos())), motivo)
-                .doOnSuccess(filas -> metricas.alerta(RESULTADO_REINTENTO));
+        return repository.reprogramar(alerta.id(), contexto.clock().instant().plus(politica.espera(alerta.intentos())), motivo)
+                .doOnSuccess(filas -> contexto.metricas().alerta(RESULTADO_REINTENTO));
     }
 }

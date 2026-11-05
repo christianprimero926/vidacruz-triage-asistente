@@ -15,12 +15,17 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 public class ReporteValidator {
+
+    /** Un "+" sin codificar en la URL llega como espacio: "...T10:00:00 01:00" era "...T10:00:00+01:00". */
+    private static final Pattern OFFSET_CON_ESPACIO =
+            Pattern.compile("^(.*T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?) (\\d{2}:\\d{2})$");
 
     private final TriageProperties properties;
 
@@ -51,7 +56,7 @@ public class ReporteValidator {
             return null;
         }
         try {
-            return OffsetDateTime.parse(texto.trim()).toInstant();
+            return OffsetDateTime.parse(restaurarMas(texto.trim())).toInstant();
         } catch (DateTimeParseException noEsFechaHora) {
             return interpretarSoloFecha(errores, campo, texto.trim());
         }
@@ -64,5 +69,9 @@ public class ReporteValidator {
             errores.agregar(campo, String.format(MSG_FECHA_INVALIDA, campo));
             return null;
         }
+    }
+
+    private String restaurarMas(String texto) {
+        return OFFSET_CON_ESPACIO.matcher(texto).replaceFirst("$1+$2");
     }
 }

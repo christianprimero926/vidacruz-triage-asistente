@@ -37,6 +37,15 @@ class ReporteValidatorTest {
     }
 
     @Test
+    @DisplayName("un offset positivo sin codificar en la URL (llega como espacio) se trata como +")
+    void shouldTreatSpaceAsPlus_WhenOffsetArrivesUnencoded() {
+        RangoReporteDTO rango = validator.validar("2026-11-05T11:00:00 01:00", "2026-11-05T12:00:00.5 00:00");
+
+        assertThat(rango.desde()).isEqualTo(Instant.parse("2026-11-05T10:00:00Z"));
+        assertThat(rango.hasta()).isEqualTo(Instant.parse("2026-11-05T12:00:00.5Z"));
+    }
+
+    @Test
     @DisplayName("una fecha sin hora se toma a medianoche UTC")
     void shouldUseMidnightUtc_WhenOnlyDateIsGiven() {
         RangoReporteDTO rango = validator.validar("2026-11-05", "2026-11-06");

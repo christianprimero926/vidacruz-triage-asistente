@@ -21,17 +21,21 @@ import reactor.core.publisher.Flux;
 public class ReporteRepository {
 
     private static final String SQL_OPERACION = """
-            WITH primera_consulta AS (
-                SELECT paciente_id, fecha_evento,
-                       ROW_NUMBER() OVER (PARTITION BY paciente_id ORDER BY fecha_evento, id) AS orden
-                FROM auditoria_clinica
-                WHERE tipo_evento = 'paciente_en_consulta'
+            WITH registrados AS (
+                SELECT id, nivel, fecha_registro
+                FROM paciente
+                WHERE fecha_registro >= :desde AND fecha_registro < :hasta
+            ), primera_consulta AS (
+                SELECT a.paciente_id, a.fecha_evento,
+                       ROW_NUMBER() OVER (PARTITION BY a.paciente_id ORDER BY a.fecha_evento, a.id) AS orden
+                FROM auditoria_clinica a
+                JOIN registrados r ON r.id = a.paciente_id
+                WHERE a.tipo_evento = 'paciente_en_consulta'
             ), espera AS (
                 SELECT p.id, p.nivel, date_trunc('hour', p.fecha_registro, 'UTC') AS hora,
                        EXTRACT(EPOCH FROM (pc.fecha_evento - p.fecha_registro)) / 60.0 AS minutos
-                FROM paciente p
+                FROM registrados p
                 LEFT JOIN primera_consulta pc ON pc.paciente_id = p.id AND pc.orden = 1
-                WHERE p.fecha_registro >= :desde AND p.fecha_registro < :hasta
             )
             SELECT hora,
                    COUNT(*) AS total,

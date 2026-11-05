@@ -85,12 +85,8 @@ public class PacienteServiceImpl implements PacienteService {
     }
 
     private Mono<Paciente> registrarAuditoria(Paciente paciente) {
-        AuditoriaClinica auditoria = AuditoriaClinica.builder()
-                .pacienteId(paciente.getId())
-                .tipoEvento(TipoEvento.PACIENTE_REGISTRADO.getNombre())
-                .estadoNuevo(EstadoPaciente.REGISTRADO.name())
-                .fechaEvento(paciente.getFechaRegistro())
-                .build();
+        AuditoriaClinica auditoria = AuditoriaClinica.de(paciente.getId(), TipoEvento.PACIENTE_REGISTRADO,
+                EstadoPaciente.REGISTRADO.name(), paciente.getFechaRegistro());
         return auditoriaService.registrar(auditoria).thenReturn(paciente);
     }
 }

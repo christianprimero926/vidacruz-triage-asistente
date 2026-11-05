@@ -22,6 +22,9 @@ public class TriageProperties {
     @Valid
     private Alertas alertas = new Alertas();
 
+    @Valid
+    private Outbox outbox = new Outbox();
+
     @Data
     public static class Alertas {
 
@@ -34,6 +37,14 @@ public class TriageProperties {
         /** Espera tras el primer fallo; se duplica en cada reintento. */
         @Min(1)
         private long esperaBaseMs = 30000;
+    }
+
+    @Data
+    public static class Outbox {
+
+        /** Rechazos permanentes de Kafka tolerados antes de descartar el registro; los transitorios no cuentan. */
+        @Min(1)
+        private int maxIntentos = 5;
     }
 
     @Data
@@ -85,5 +96,8 @@ public class TriageProperties {
         private long alertasIntervaloMs = 2000;
         @Min(1)
         private int alertasLote = 20;
+        /** Tope de una corrida: si se cuelga, se cancela y el siguiente tick sigue. */
+        @Min(1)
+        private long timeoutCorridaMs = 60000;
     }
 }

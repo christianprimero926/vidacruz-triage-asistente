@@ -31,4 +31,19 @@ public class AuditoriaClinica {
     private Instant fechaEvento;
     @Column("correlation_id")
     private String correlationId;
+
+    /** Entrada de auditoría de un evento; el estado anterior se añade con conEstadoAnterior cuando existe. */
+    public static AuditoriaClinica de(UUID pacienteId, TipoEvento tipo, String estadoNuevo, Instant fechaEvento) {
+        return AuditoriaClinica.builder()
+                .pacienteId(pacienteId)
+                .tipoEvento(tipo.getNombre())
+                .estadoNuevo(estadoNuevo)
+                .fechaEvento(fechaEvento)
+                .build();
+    }
+
+    public AuditoriaClinica conEstadoAnterior(String estado) {
+        this.estadoAnterior = estado;
+        return this;
+    }
 }

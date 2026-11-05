@@ -39,8 +39,9 @@ class SlaMonitorJobTest {
     private SlaMonitorJob job() {
         var properties = new TriageProperties();
         properties.getJobs().setSlaLote(7);
-        return new SlaMonitorJob(pacienteRepository, escalamientoService, properties, Clock.fixed(AHORA, ZoneOffset.UTC),
-                new MetricasTriage(new SimpleMeterRegistry()));
+        return new SlaMonitorJob(pacienteRepository, escalamientoService,
+                new ContextoJobs(properties, Clock.fixed(AHORA, ZoneOffset.UTC),
+                        new MetricasTriage(new SimpleMeterRegistry())));
     }
 
     @Test

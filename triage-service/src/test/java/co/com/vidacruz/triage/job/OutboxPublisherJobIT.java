@@ -221,6 +221,7 @@ class OutboxPublisherJobIT extends AbstractIT {
                 job.ejecutar().block(Duration.ofSeconds(60));
 
                 assertThat(contar("outbox_evento WHERE fecha_publicacion IS NULL")).isEqualTo(1);
+                assertThat(contar("outbox_evento WHERE intentos > 0 OR fecha_descarte IS NOT NULL")).isZero();
                 assertThat(gauge()).isEqualTo(1.0);
                 assertThat(contar("paciente")).isEqualTo(1);
             } finally {

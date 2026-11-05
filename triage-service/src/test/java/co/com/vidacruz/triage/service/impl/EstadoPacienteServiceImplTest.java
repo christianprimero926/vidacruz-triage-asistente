@@ -82,7 +82,8 @@ class EstadoPacienteServiceImplTest {
     @Test
     @DisplayName("una transición válida actualiza, audita y devuelve el nuevo estado con tiempo en cero")
     void shouldUpdateAndAudit_WhenTransitionIsValid() {
-        when(pacienteRepository.findById(id)).thenReturn(Mono.just(paciente(EstadoPaciente.REGISTRADO)));
+        when(pacienteRepository.findById(id)).thenReturn(Mono.just(paciente(EstadoPaciente.REGISTRADO)),
+                Mono.just(paciente(EstadoPaciente.EN_CONSULTA).toBuilder().fechaEstado(AHORA).build()));
         when(auditoriaService.registrar(any(AuditoriaClinica.class))).thenReturn(Mono.empty());
         when(outboxService.registrar(any(Paciente.class), any(TipoEvento.class), any(Instant.class))).thenReturn(Mono.empty());
         filasActualizadas(1);
@@ -104,6 +105,25 @@ class EstadoPacienteServiceImplTest {
         assertThat(auditoria.getValue().getFechaEvento()).isEqualTo(AHORA);
         verify(outboxService).registrar(actualizado.capture(), eq(TipoEvento.PACIENTE_EN_CONSULTA), eq(AHORA));
         assertThat(actualizado.getValue().getEstado()).isEqualTo(EstadoPaciente.EN_CONSULTA);
+    }
+
+    @Test
+    @DisplayName("si escalar confirmó entre la lectura y el UPDATE, el evento y la respuesta salen con escalado=true")
+    void shouldUseFreshPaciente_WhenEscalationCommittedBeforeUpdate() {
+        Paciente leidoAntes = paciente(EstadoPaciente.REGISTRADO);
+        Paciente releido = paciente(EstadoPaciente.EN_CONSULTA).toBuilder().escalado(true).fechaEstado(AHORA).build();
+        when(pacienteRepository.findById(id)).thenReturn(Mono.just(leidoAntes), Mono.just(releido));
+        when(auditoriaService.registrar(any(AuditoriaClinica.class))).thenReturn(Mono.empty());
+        when(outboxService.registrar(any(Paciente.class), any(TipoEvento.class), any(Instant.class))).thenReturn(Mono.empty());
+        filasActualizadas(1);
+
+        StepVerifier.create(service.cambiarEstado(id, new EstadoRequestDTO("EN_CONSULTA")))
+                .assertNext(respuesta -> assertThat(respuesta.isEscalado()).isTrue())
+                .verifyComplete();
+
+        ArgumentCaptor<Paciente> enEvento = ArgumentCaptor.forClass(Paciente.class);
+        verify(outboxService).registrar(enEvento.capture(), eq(TipoEvento.PACIENTE_EN_CONSULTA), eq(AHORA));
+        assertThat(enEvento.getValue().isEscalado()).isTrue();
     }
 
     @Test

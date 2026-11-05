@@ -69,13 +69,8 @@ public class EscalamientoServiceImpl implements EscalamientoService {
     }
 
     private AuditoriaClinica auditoriaDe(Paciente paciente, Instant ahora) {
-        return AuditoriaClinica.builder()
-                .pacienteId(paciente.getId())
-                .tipoEvento(TipoEvento.PACIENTE_ESCALADO.getNombre())
-                .estadoAnterior(EstadoPaciente.REGISTRADO.name())
-                .estadoNuevo(ESTADO_ESCALADO)
-                .fechaEvento(ahora)
-                .build();
+        return AuditoriaClinica.de(paciente.getId(), TipoEvento.PACIENTE_ESCALADO, ESTADO_ESCALADO, ahora)
+                .conEstadoAnterior(EstadoPaciente.REGISTRADO.name());
     }
 
     private AlertaMedica alertaDe(Paciente paciente, Instant ahora) {

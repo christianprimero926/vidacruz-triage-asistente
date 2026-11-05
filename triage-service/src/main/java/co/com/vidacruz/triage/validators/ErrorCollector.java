@@ -34,13 +34,13 @@ class ErrorCollector {
         }
     }
 
-    void rango(String campo, BigDecimal valor, BigDecimal minimo, BigDecimal maximo, int decimalesMaximos) {
+    void rango(String campo, BigDecimal valor, RangoDecimal limites) {
         if (valor == null) {
             obligatorio(campo);
-        } else if (valor.compareTo(minimo) < 0 || valor.compareTo(maximo) > 0) {
-            agregar(campo, String.format(MSG_CAMPO_RANGO, campo, minimo.toPlainString(), maximo.toPlainString()));
-        } else if (valor.stripTrailingZeros().scale() > decimalesMaximos) {
-            agregar(campo, String.format(MSG_CAMPO_DECIMALES, campo, decimalesMaximos));
+        } else if (valor.compareTo(limites.minimo()) < 0 || valor.compareTo(limites.maximo()) > 0) {
+            agregar(campo, String.format(MSG_CAMPO_RANGO, campo, limites.minimo().toPlainString(), limites.maximo().toPlainString()));
+        } else if (valor.stripTrailingZeros().scale() > limites.decimalesMaximos()) {
+            agregar(campo, String.format(MSG_CAMPO_DECIMALES, campo, limites.decimalesMaximos()));
         }
     }
 

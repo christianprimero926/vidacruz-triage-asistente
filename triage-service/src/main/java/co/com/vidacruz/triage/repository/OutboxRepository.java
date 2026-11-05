@@ -22,9 +22,20 @@ public class OutboxRepository {
     private static final String SELECT_PENDIENTES = """
             SELECT id, paciente_id, tipo_evento, payload, correlation_id, traceparent, fecha_creacion
             FROM outbox_evento
-            WHERE fecha_publicacion IS NULL
+            WHERE fecha_publicacion IS NULL AND fecha_descarte IS NULL
             ORDER BY secuencia
             LIMIT :lote
+            """;
+
+    private static final int LARGO_MAXIMO_ERROR = 500;
+
+    private static final String RECHAZO_PERMANENTE = """
+            UPDATE outbox_evento
+            SET intentos = intentos + 1,
+                ultimo_error = :error,
+                fecha_descarte = CASE WHEN intentos + 1 >= :max THEN CAST(:fecha AS TIMESTAMPTZ) END
+            WHERE id = :id
+            RETURNING fecha_descarte IS NOT NULL
             """;
 
     private final R2dbcEntityTemplate template;
@@ -57,8 +68,24 @@ public class OutboxRepository {
                 .rowsUpdated();
     }
 
+    /** Suma un rechazo permanente y descarta el registro al llegar al máximo; emite true si quedó descartado. */
+    public Mono<Boolean> registrarRechazoPermanente(UUID id, String error, int maxIntentos, Instant fecha) {
+        return databaseClient.sql(RECHAZO_PERMANENTE)
+                .bind("id", id)
+                .bind("error", recortar(error))
+                .bind("max", maxIntentos)
+                .bind("fecha", fecha)
+                .map(fila -> fila.get(0, Boolean.class))
+                .one();
+    }
+
+    private String recortar(String error) {
+        return error.length() > LARGO_MAXIMO_ERROR ? error.substring(0, LARGO_MAXIMO_ERROR) : error;
+    }
+
     public Mono<Long> contarPendientes() {
-        return databaseClient.sql("SELECT COUNT(*) FROM outbox_evento WHERE fecha_publicacion IS NULL")
+        return databaseClient.sql("SELECT COUNT(*) FROM outbox_evento "
+                        + "WHERE fecha_publicacion IS NULL AND fecha_descarte IS NULL")
                 .map(fila -> fila.get(0, Long.class))
                 .one();
     }

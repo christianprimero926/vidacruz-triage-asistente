@@ -4,6 +4,7 @@ import static co.com.vidacruz.triage.utilities.Constants.CORRELATION_ID_KEY;
 
 import java.time.Duration;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.SmartLifecycle;
 import reactor.core.Disposable;
@@ -19,12 +20,14 @@ public abstract class PeriodicJob implements SmartLifecycle {
 
     private final String nombre;
     private final Duration periodo;
+    private final Duration timeoutCorrida;
     private final boolean habilitado;
     private volatile Disposable suscripcion;
 
-    protected PeriodicJob(String nombre, Duration periodo, boolean habilitado) {
+    protected PeriodicJob(String nombre, Duration periodo, Duration timeoutCorrida, boolean habilitado) {
         this.nombre = nombre;
         this.periodo = periodo;
+        this.timeoutCorrida = timeoutCorrida;
         this.habilitado = habilitado;
     }
 
@@ -39,6 +42,7 @@ public abstract class PeriodicJob implements SmartLifecycle {
         suscripcion = Flux.interval(periodo)
                 .onBackpressureDrop()
                 .concatMap(tick -> Mono.defer(this::ejecutar)
+                        .timeout(timeoutCorrida)
                         .contextWrite(contexto -> contexto.put(CORRELATION_ID_KEY, UUID.randomUUID().toString()))
                         .onErrorResume(this::registrarFallo), 1)
                 .subscribe();
@@ -61,6 +65,11 @@ public abstract class PeriodicJob implements SmartLifecycle {
     }
 
     private Mono<Void> registrarFallo(Throwable error) {
+        if (error instanceof TimeoutException) {
+            log.error("La corrida del job {} superó {} ms y se canceló; sigue el siguiente tick", nombre,
+                    timeoutCorrida.toMillis());
+            return Mono.empty();
+        }
         log.error("Falló una corrida del job {}", nombre, error);
         return Mono.empty();
     }

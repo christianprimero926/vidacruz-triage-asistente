@@ -62,13 +62,26 @@ public class EstadoPacienteServiceImpl implements EstadoPacienteService {
             return Mono.error(new TransicionInvalidaException(origen, destino));
         }
         Instant ahora = clock.instant();
-        Paciente actualizado = paciente.toBuilder().estado(destino).fechaEstado(ahora).build();
-        return actualizarSiSigueEn(paciente.getId(), origen, destino, ahora)
+        UUID id = paciente.getId();
+        return actualizarSiSigueEn(id, origen, destino, ahora)
                 .flatMap(filas -> filas == 0 ? Mono.error(conflictoConcurrente()) : Mono.just(filas))
-                .then(Mono.defer(() -> auditoriaService.registrar(auditoriaDe(paciente.getId(), origen, destino, ahora))))
-                .then(Mono.defer(() -> outboxService.registrar(actualizado, TipoEvento.paraEstado(destino), ahora)))
-                .thenReturn(actualizado)
-                .doOnSuccess(resultado -> log.info("Paciente id={} pasó de {} a {}", paciente.getId(), origen, destino));
+                .then(Mono.defer(() -> pacienteRepository.findById(id)))
+                .flatMap(actualizado -> registrarEfectos(actualizado, origen, destino, ahora))
+                .doOnSuccess(resultado -> log.info("Paciente id={} pasó de {} a {}", id, origen, destino));
+    }
+
+    /**
+     * El paciente se relee tras el UPDATE: si escalar confirmó entre la primera lectura y el UPDATE, el evento
+     * y la respuesta deben llevar escalado=true y no el dato de la lectura inicial.
+     */
+    private Mono<Paciente> registrarEfectos(Paciente actualizado, EstadoPaciente origen, EstadoPaciente destino,
+                                            Instant ahora) {
+        TipoEvento tipo = TipoEvento.paraEstado(destino);
+        AuditoriaClinica auditoria = AuditoriaClinica.de(actualizado.getId(), tipo, destino.name(), ahora)
+                .conEstadoAnterior(origen.name());
+        return auditoriaService.registrar(auditoria)
+                .then(Mono.defer(() -> outboxService.registrar(actualizado, tipo, ahora)))
+                .thenReturn(actualizado);
     }
 
     /** UPDATE condicional: si otro cambió el estado antes, no afecta filas y se informa el conflicto. */
@@ -76,16 +89,6 @@ public class EstadoPacienteServiceImpl implements EstadoPacienteService {
         return template.update(Paciente.class)
                 .matching(Query.query(Criteria.where("id").is(id).and("estado").is(origen)))
                 .apply(Update.update("estado", destino).set("fechaEstado", ahora));
-    }
-
-    private AuditoriaClinica auditoriaDe(UUID id, EstadoPaciente origen, EstadoPaciente destino, Instant ahora) {
-        return AuditoriaClinica.builder()
-                .pacienteId(id)
-                .tipoEvento(TipoEvento.paraEstado(destino).getNombre())
-                .estadoAnterior(origen.name())
-                .estadoNuevo(destino.name())
-                .fechaEvento(ahora)
-                .build();
     }
 
     private BusinessException conflictoConcurrente() {

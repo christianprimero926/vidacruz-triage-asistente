@@ -60,6 +60,7 @@ public class Constants {
     public static final String METRICA_ESCALAMIENTOS = "triage.escalamientos";
     public static final String METRICA_ALERTAS = "triage.alertas";
     public static final String METRICA_OUTBOX_PENDIENTES = "triage.outbox.pendientes";
+    public static final String METRICA_OUTBOX_DESCARTADOS = "triage.outbox.descartados";
     public static final String TAG_NIVEL = "nivel";
     public static final String TAG_RESULTADO = "resultado";
 

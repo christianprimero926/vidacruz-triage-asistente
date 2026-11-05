@@ -15,6 +15,7 @@ import reactor.core.publisher.Mono;
 class PeriodicJobTest {
 
     private static final Duration PERIODO = Duration.ofMillis(20);
+    private static final Duration TIMEOUT = Duration.ofSeconds(30);
 
     private PruebaJob job;
 
@@ -28,7 +29,7 @@ class PeriodicJobTest {
     @Test
     @DisplayName("no arranca si está deshabilitado")
     void shouldNotRun_WhenDisabled() {
-        job = new PruebaJob(false, ejecucion -> Mono.empty());
+        job = new PruebaJob(false, TIMEOUT, ejecucion -> Mono.empty());
 
         job.start();
         assertThat(job.isRunning()).isFalse();
@@ -39,7 +40,7 @@ class PeriodicJobTest {
     @Test
     @DisplayName("ejecuta de forma periódica y se detiene con stop")
     void shouldRunPeriodicallyUntilStopped_WhenEnabled() {
-        job = new PruebaJob(true, ejecucion -> Mono.empty());
+        job = new PruebaJob(true, TIMEOUT, ejecucion -> Mono.empty());
 
         job.start();
         await().atMost(Duration.ofSeconds(5)).until(() -> job.ejecuciones.get() >= 3);
@@ -54,7 +55,7 @@ class PeriodicJobTest {
     @Test
     @DisplayName("nunca solapa corridas aunque una tarde más que el periodo")
     void shouldNeverOverlapRuns_WhenARunIsSlowerThanThePeriod() {
-        job = new PruebaJob(true, ejecucion -> Mono.delay(Duration.ofMillis(100)).then());
+        job = new PruebaJob(true, TIMEOUT, ejecucion -> Mono.delay(Duration.ofMillis(100)).then());
 
         job.start();
         await().atMost(Duration.ofSeconds(5)).until(() -> job.ejecuciones.get() >= 3);
@@ -65,9 +66,21 @@ class PeriodicJobTest {
     @Test
     @DisplayName("un error en una corrida no detiene las siguientes")
     void shouldKeepRunning_WhenARunFails() {
-        job = new PruebaJob(true, ejecucion -> ejecucion == 1
+        job = new PruebaJob(true, TIMEOUT, ejecucion -> ejecucion == 1
                 ? Mono.error(new IllegalStateException("falla"))
                 : Mono.empty());
+
+        job.start();
+
+        await().atMost(Duration.ofSeconds(5)).until(() -> job.ejecuciones.get() >= 3);
+        assertThat(job.isRunning()).isTrue();
+    }
+
+    @Test
+    @DisplayName("una corrida que nunca termina se cancela por timeout y no impide la siguiente")
+    void shouldRunNextTick_WhenARunNeverFinishes() {
+        job = new PruebaJob(true, Duration.ofMillis(100),
+                ejecucion -> ejecucion == 1 ? Mono.never() : Mono.empty());
 
         job.start();
 
@@ -82,8 +95,8 @@ class PeriodicJobTest {
         private final AtomicInteger maximoSimultaneas = new AtomicInteger();
         private final IntFunction<Mono<Void>> comportamiento;
 
-        PruebaJob(boolean habilitado, IntFunction<Mono<Void>> comportamiento) {
-            super("prueba", PERIODO, habilitado);
+        PruebaJob(boolean habilitado, Duration timeout, IntFunction<Mono<Void>> comportamiento) {
+            super("prueba", PERIODO, timeout, habilitado);
             this.comportamiento = comportamiento;
         }
 

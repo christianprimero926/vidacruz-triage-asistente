@@ -19,9 +19,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class PacienteValidator {
 
-    private static final BigDecimal TEMPERATURA_MINIMA = new BigDecimal("34.0");
-    private static final BigDecimal TEMPERATURA_MAXIMA = new BigDecimal("42.0");
-    private static final int TEMPERATURA_DECIMALES = 2;
+    private static final RangoDecimal RANGO_TEMPERATURA =
+            new RangoDecimal(new BigDecimal("34.0"), new BigDecimal("42.0"), 2);
     private static final int QUEJA_LONGITUD_MAXIMA = 500;
 
     /** Lanza ValidationException con todos los campos inválidos. */
@@ -34,8 +33,7 @@ public class PacienteValidator {
         errores.rango(PRESION_DIASTOLICA, request.getPresionDiastolica(), 30, 160);
         validarDiastolicaMenorQueSistolica(request, errores);
         errores.rango(SPO2, request.getSpo2(), 70, 100);
-        errores.rango(TEMPERATURA, request.getTemperatura(), TEMPERATURA_MINIMA, TEMPERATURA_MAXIMA,
-                TEMPERATURA_DECIMALES);
+        errores.rango(TEMPERATURA, request.getTemperatura(), RANGO_TEMPERATURA);
         errores.rango(DOLOR, request.getDolor(), 0, 10);
         errores.rango(GCS, request.getGcs(), 3, 15);
         errores.textoObligatorio(QUEJA_PRINCIPAL, request.getQuejaPrincipal(), QUEJA_LONGITUD_MAXIMA);
