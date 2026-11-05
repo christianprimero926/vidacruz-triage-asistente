@@ -36,6 +36,20 @@ public class CorpusLoader {
         return contenido(protocolo, seccion).isPresent();
     }
 
+    public boolean existeProtocolo(String protocolo) {
+        return protocolos.stream().anyMatch(p -> p.id().equals(protocolo));
+    }
+
+    /** Título, nombre de sección y contenido: todo lo que una respuesta fiel puede reutilizar de una fuente. */
+    public Optional<String> textoReferencia(String protocolo, String seccion) {
+        return protocolos.stream()
+                .filter(p -> p.id().equals(protocolo))
+                .flatMap(p -> p.secciones().stream()
+                        .filter(s -> s.nombre().equals(seccion))
+                        .map(s -> p.titulo() + " " + s.nombre() + " " + s.contenido()))
+                .findFirst();
+    }
+
     public Optional<String> contenido(String protocolo, String seccion) {
         return protocolos.stream()
                 .filter(p -> p.id().equals(protocolo))

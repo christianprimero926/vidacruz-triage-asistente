@@ -2,16 +2,15 @@ package co.com.vidacruz.asistente.config;
 
 import static co.com.vidacruz.asistente.utilities.Constants.COD_NO_AUTORIZADO;
 import static co.com.vidacruz.asistente.utilities.Constants.HEADER_API_KEY;
-import static co.com.vidacruz.asistente.utilities.Constants.HEADER_CORRELACION;
 import static co.com.vidacruz.asistente.utilities.Constants.MSG_NO_AUTORIZADO;
 import static co.com.vidacruz.asistente.utilities.Constants.RUTAS_PUBLICAS;
 
 import co.com.vidacruz.asistente.dto.response.ErrorResponseDTO;
+import co.com.vidacruz.asistente.utilities.Saneador;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.time.Clock;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
@@ -36,13 +35,14 @@ public class ApiKeyWebFilter implements WebFilter {
 
     private final byte[] claveEsperada;
     private final ObjectMapper objectMapper;
-    private final Clock clock;
+    private final ErrorResponseFactory errorResponseFactory;
     private final List<PathPattern> rutasPublicas;
 
-    public ApiKeyWebFilter(SeguridadProperties properties, ObjectMapper objectMapper, Clock clock) {
+    public ApiKeyWebFilter(SeguridadProperties properties, ObjectMapper objectMapper,
+                           ErrorResponseFactory errorResponseFactory) {
         this.claveEsperada = properties.apiKey().getBytes(StandardCharsets.UTF_8);
         this.objectMapper = objectMapper;
-        this.clock = clock;
+        this.errorResponseFactory = errorResponseFactory;
         this.rutasPublicas = RUTAS_PUBLICAS.stream().map(PathPatternParser.defaultInstance::parse).toList();
     }
 
@@ -51,7 +51,8 @@ public class ApiKeyWebFilter implements WebFilter {
         if (esPublica(exchange) || claveValida(exchange.getRequest().getHeaders().getFirst(HEADER_API_KEY))) {
             return chain.filter(exchange);
         }
-        log.warn("Solicitud rechazada por API key ausente o inválida: {}", exchange.getRequest().getPath());
+        log.warn("Solicitud rechazada por API key ausente o inválida: {}",
+                Saneador.limpiar(exchange.getRequest().getPath().value()));
         return rechazar(exchange);
     }
 
@@ -69,14 +70,8 @@ public class ApiKeyWebFilter implements WebFilter {
         ServerHttpResponse respuesta = exchange.getResponse();
         respuesta.setStatusCode(HttpStatus.UNAUTHORIZED);
         respuesta.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        ErrorResponseDTO cuerpo = ErrorResponseDTO.builder()
-                .timestamp(clock.instant())
-                .status(HttpStatus.UNAUTHORIZED.value())
-                .codigo(COD_NO_AUTORIZADO)
-                .mensaje(MSG_NO_AUTORIZADO)
-                .path(exchange.getRequest().getPath().value())
-                .correlationId(respuesta.getHeaders().getFirst(HEADER_CORRELACION))
-                .build();
+        ErrorResponseDTO cuerpo = errorResponseFactory.crear(exchange, HttpStatus.UNAUTHORIZED, COD_NO_AUTORIZADO,
+                MSG_NO_AUTORIZADO, null);
         try {
             byte[] bytes = objectMapper.writeValueAsBytes(cuerpo);
             return respuesta.writeWith(Mono.just(respuesta.bufferFactory().wrap(bytes)));

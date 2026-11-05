@@ -109,9 +109,28 @@ class UrgenciasKafkaRedisIT extends KafkaRedisITBase {
         esperarEstado(webTestClient, e -> e.getNiveles().get("NO_URGENTE_2") == 1L);
         var enDlt = leerTopic(TOPIC_DLT, 3);
 
-        assertThat(enDlt).extracting(r -> r.value()).containsExactlyInAnyOrder(ilegible, sinNivel, nivelDesconocido);
+        assertThat(enDlt).extracting(r -> r.value()).contains(ilegible, sinNivel, nivelDesconocido);
         assertThat(enDlt).allSatisfy(r -> assertThat(
                 new String(r.headers().lastHeader("motivo-dlt").value(), StandardCharsets.UTF_8)).isNotBlank());
         assertThat(estado(webTestClient).getTotalActivos()).isEqualTo(1L);
+    }
+
+    @Test
+    void shouldSendToDltAndKeepConsuming_WhenRedisRejectsTheCommandPermanently() {
+        redis.opsForValue().set("urgencias:activos:URGENTE_2", "no soy un set").block();
+        String bloqueado = id();
+        String evento = evento("paciente_registrado", bloqueado, "URGENTE_2");
+        publicar(TOPIC, bloqueado, evento);
+        String siguiente = id();
+        publicar(TOPIC, siguiente, evento("paciente_registrado", siguiente, "CRITICO"));
+
+        var enDlt = leerTopic(TOPIC_DLT, 1);
+        redis.delete("urgencias:activos:URGENTE_2").block();
+        esperarEstado(webTestClient, e -> e.getNiveles().get("CRITICO") == 1L);
+
+        assertThat(enDlt).extracting(r -> r.value()).contains(evento);
+        assertThat(enDlt.stream().filter(r -> evento.equals(r.value())).findFirst().orElseThrow()
+                .headers().lastHeader("motivo-dlt").value())
+                .asString(StandardCharsets.UTF_8).contains("Redis rechazó el comando");
     }
 }

@@ -6,7 +6,7 @@ import static org.awaitility.Awaitility.await;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import co.com.vidacruz.asistente.consumer.UrgenciasEventConsumer;
+import co.com.vidacruz.asistente.consumer.DltPublisher;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.time.Duration;
@@ -37,7 +37,7 @@ class TrazasConsumidorIT extends KafkaRedisITBase {
     private static final InMemorySpanExporter EXPORTADOR = InMemorySpanExporter.create();
 
     private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
-    private final Logger loggerConsumidor = (Logger) LoggerFactory.getLogger(UrgenciasEventConsumer.class);
+    private final Logger loggerConsumidor = (Logger) LoggerFactory.getLogger(DltPublisher.class);
 
     @TestConfiguration
     static class ExportadorEnMemoria {

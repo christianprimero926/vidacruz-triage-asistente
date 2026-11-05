@@ -9,12 +9,16 @@ import org.springframework.validation.annotation.Validated;
 /**
  * Parámetros de la recuperación semántica. El score es la relevancia de LangChain4j, es decir
  * (coseno + 1) / 2, en el rango 0..1. {@code scoreMinimo} recorta el contexto que va al LLM y
- * {@code scoreAlto} deja pasar una pregunta sin coincidencia de términos.
+ * {@code scoreAlto} deja pasar una pregunta sin coincidencia de términos. Los embeddings son CPU y corren en un
+ * scheduler propio con {@code hilos}, {@code cola} y {@code timeoutSegundos} acotados.
  */
 @Validated
 @ConfigurationProperties(prefix = "asistente.rag")
 public record RagProperties(
         @Min(1) int topK,
         @DecimalMin("0.0") @DecimalMax("1.0") double scoreMinimo,
-        @DecimalMin("0.0") @DecimalMax("1.0") double scoreAlto) {
+        @DecimalMin("0.0") @DecimalMax("1.0") double scoreAlto,
+        @Min(1) int hilos,
+        @Min(1) int cola,
+        @Min(1) int timeoutSegundos) {
 }

@@ -117,7 +117,7 @@ class ConsultaServiceImplTest {
             RespuestaLlm llm = new RespuestaLlm("Reconfirmar la presión tras 5 minutos.",
                     List.of(FUENTE, FUENTE), false);
             when(llmGateway.consultar(PREGUNTA, SEGMENTOS)).thenReturn(Mono.just(llm));
-            when(respuestaValidator.esValida(llm, SEGMENTOS)).thenReturn(true);
+            when(respuestaValidator.esValida(PREGUNTA, llm, SEGMENTOS)).thenReturn(true);
 
             StepVerifier.create(service.consultar(pregunta()))
                     .assertNext(respuesta -> {
@@ -133,7 +133,7 @@ class ConsultaServiceImplTest {
         void shouldReturnOnlyNoticeAndNoSources_WhenAnswerIsInvalid() {
             RespuestaLlm llm = new RespuestaLlm("Dar 10 mg de algo.", List.of(FUENTE), false);
             when(llmGateway.consultar(PREGUNTA, SEGMENTOS)).thenReturn(Mono.just(llm));
-            when(respuestaValidator.esValida(any(), any())).thenReturn(false);
+            when(respuestaValidator.esValida(any(), any(), any())).thenReturn(false);
 
             StepVerifier.create(service.consultar(pregunta()))
                     .assertNext(respuesta -> {

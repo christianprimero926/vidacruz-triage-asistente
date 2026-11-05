@@ -13,6 +13,7 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2Quantize
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
+import reactor.core.scheduler.Schedulers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 @DisplayName("CompuertaRelevancia con el modelo de embeddings real")
 class CompuertaRelevanciaTest {
 
-    private static final RagProperties PROPIEDADES = new RagProperties(3, 0.65, 0.80);
+    private static final RagProperties PROPIEDADES = new RagProperties(3, 0.65, 0.80, 2, 20, 5);
 
     private static CorpusLoader corpusLoader;
     private static RagRetrieverImpl retriever;
@@ -33,7 +34,7 @@ class CompuertaRelevanciaTest {
         corpusLoader = new CorpusLoader(new ObjectMapper());
         EmbeddingModel modelo = new AllMiniLmL6V2QuantizedEmbeddingModel();
         EmbeddingStore<TextSegment> indice = new CorpusIndexer(corpusLoader, modelo).construirIndice();
-        retriever = new RagRetrieverImpl(modelo, indice, PROPIEDADES);
+        retriever = new RagRetrieverImpl(modelo, indice, PROPIEDADES, Schedulers.newBoundedElastic(2, 20, "rag-test"));
         compuerta = new CompuertaRelevancia(corpusLoader, PROPIEDADES);
     }
 

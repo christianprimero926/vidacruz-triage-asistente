@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import co.com.vidacruz.asistente.config.LlmProperties;
 import co.com.vidacruz.asistente.domain.SegmentoRecuperado;
 import co.com.vidacruz.asistente.exception.LlmNoDisponibleException;
+import co.com.vidacruz.asistente.service.LlmConversacion;
 import co.com.vidacruz.asistente.service.LlmResilience;
 import co.com.vidacruz.asistente.service.PromptBuilder;
 import co.com.vidacruz.asistente.service.RespuestaLlmParser;
@@ -66,9 +67,9 @@ class LangChainLlmGatewayTest {
 
     private LangChainLlmGateway gateway(String apiKey) {
         LlmProperties properties = new LlmProperties(apiKey, "http://localhost", "modelo", 1, 2, 10);
-        return new LangChainLlmGateway(chatModel, new PromptBuilder(),
-                new RespuestaLlmParser(new ObjectMapper()), properties, scheduler,
-                new LlmResilience(registry, meterRegistry));
+        LlmConversacion conversacion = new LlmConversacion(new PromptBuilder(), new RespuestaLlmParser(new ObjectMapper()));
+        return new LangChainLlmGateway(chatModel, conversacion, properties,
+                new LlmResilience(registry, meterRegistry, scheduler, properties));
     }
 
     private static ChatResponse respondeCon(String texto) {
@@ -167,6 +168,38 @@ class LangChainLlmGatewayTest {
     @Test
     void shouldCountUnreadableJsonAsFailureOfTheCircuit_WhenModelReturnsGarbage() {
         when(chatModel.chat(any(ChatRequest.class))).thenReturn(respondeCon("basura"));
+        LangChainLlmGateway gateway = gateway("clave");
+
+        fallarVeces(gateway, 2);
+
+        assertThat(registry.circuitBreaker("llm").getState()).isEqualTo(CircuitBreaker.State.OPEN);
+    }
+
+    @Test
+    void shouldFailInsteadOfCompletingEmpty_WhenModelReturnsBlankText() {
+        when(chatModel.chat(any(ChatRequest.class))).thenReturn(respondeCon("   "));
+
+        StepVerifier.create(gateway("clave").consultar("¿medidas?", CONTEXTO))
+                .expectError(LlmNoDisponibleException.class)
+                .verify();
+        assertThat(muestras("error")).isEqualTo(1);
+    }
+
+    @Test
+    void shouldFailInsteadOfCompletingEmpty_WhenModelReturnsNullText() {
+        AiMessage sinTexto = org.mockito.Mockito.mock(AiMessage.class);
+        ChatResponse respuesta = ChatResponse.builder().aiMessage(sinTexto).build();
+        when(sinTexto.text()).thenReturn(null);
+        when(chatModel.chat(any(ChatRequest.class))).thenReturn(respuesta);
+
+        StepVerifier.create(gateway("clave").consultar("¿medidas?", CONTEXTO))
+                .expectError(LlmNoDisponibleException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldCountEmptyAnswersAsCircuitFailures_WhenModelKeepsReturningNothing() {
+        when(chatModel.chat(any(ChatRequest.class))).thenReturn(respondeCon(" "));
         LangChainLlmGateway gateway = gateway("clave");
 
         fallarVeces(gateway, 2);

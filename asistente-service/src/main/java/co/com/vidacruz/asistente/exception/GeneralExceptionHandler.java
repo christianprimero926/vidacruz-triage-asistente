@@ -2,7 +2,6 @@ package co.com.vidacruz.asistente.exception;
 
 import static co.com.vidacruz.asistente.utilities.Constants.COD_CUERPO_INVALIDO;
 import static co.com.vidacruz.asistente.utilities.Constants.COD_ERROR_INTERNO;
-import static co.com.vidacruz.asistente.utilities.Constants.HEADER_CORRELACION;
 import static co.com.vidacruz.asistente.utilities.Constants.MSG_CUERPO_INVALIDO;
 import static co.com.vidacruz.asistente.utilities.Constants.MSG_ERROR_INTERNO;
 import static co.com.vidacruz.asistente.utilities.Constants.REINTENTO_SEGUNDOS;
@@ -11,8 +10,9 @@ import static co.com.vidacruz.asistente.utilities.ConstantsFields.CAMPO_CUERPO;
 import co.com.vidacruz.asistente.dto.response.ErrorCampoDTO;
 import co.com.vidacruz.asistente.dto.response.ErrorResponseDTO;
 import com.fasterxml.jackson.databind.JsonMappingException;
-import java.time.Clock;
 import java.util.List;
+import co.com.vidacruz.asistente.config.ErrorResponseFactory;
+import co.com.vidacruz.asistente.utilities.Saneador;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -30,7 +30,7 @@ import org.springframework.web.server.ServerWebInputException;
 @RequiredArgsConstructor
 public class GeneralExceptionHandler {
 
-    private final Clock clock;
+    private final ErrorResponseFactory errorResponseFactory;
 
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponseDTO> handleValidation(ValidationException ex, ServerWebExchange exchange) {
@@ -67,22 +67,14 @@ public class GeneralExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleUnexpected(Exception ex, ServerWebExchange exchange) {
-        log.error("Error no previsto en {}", exchange.getRequest().getPath(), ex);
+        log.error("Error no previsto en {}", Saneador.limpiar(exchange.getRequest().getPath().value()), ex);
         return responder(exchange, HttpStatus.INTERNAL_SERVER_ERROR, COD_ERROR_INTERNO, MSG_ERROR_INTERNO, null);
     }
 
     private ResponseEntity<ErrorResponseDTO> responder(ServerWebExchange exchange, HttpStatusCode status,
                                                        String codigo, String mensaje, List<ErrorCampoDTO> errores) {
-        ErrorResponseDTO cuerpo = ErrorResponseDTO.builder()
-                .timestamp(clock.instant())
-                .status(status.value())
-                .codigo(codigo)
-                .mensaje(mensaje)
-                .path(exchange.getRequest().getPath().value())
-                .correlationId(exchange.getResponse().getHeaders().getFirst(HEADER_CORRELACION))
-                .errores(errores)
-                .build();
-        return ResponseEntity.status(status).body(cuerpo);
+        return ResponseEntity.status(status)
+                .body(errorResponseFactory.crear(exchange, status, codigo, mensaje, errores));
     }
 
     private static String mensajePara(HttpStatusCode status) {

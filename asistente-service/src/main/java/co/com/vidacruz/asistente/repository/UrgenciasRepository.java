@@ -6,8 +6,11 @@ import static co.com.vidacruz.asistente.utilities.Constants.PREFIJO_CLAVE_ACTIVO
 import co.com.vidacruz.asistente.domain.NivelTriage;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -43,12 +46,16 @@ public class UrgenciasRepository {
                 .subscribeOn(redisScheduler);
     }
 
-    public Mono<Boolean> inicializado() {
-        return Mono.defer(() -> redis.hasKey(CLAVE_INICIALIZADO)).subscribeOn(redisScheduler);
+    /** Particiones cuya vista ya se reconstruyó por completo (una marca por partición). */
+    public Mono<Set<Integer>> particionesInicializadas() {
+        return redis.scan(ScanOptions.scanOptions().match(CLAVE_INICIALIZADO + ":*").build())
+                .map(clave -> Integer.parseInt(clave.substring(CLAVE_INICIALIZADO.length() + 1)))
+                .collect(Collectors.<Integer>toSet())
+                .subscribeOn(redisScheduler);
     }
 
-    public Mono<Void> marcarInicializado() {
-        return Mono.defer(() -> redis.opsForValue().set(CLAVE_INICIALIZADO, "1").then())
+    public Mono<Void> marcarParticion(int particion) {
+        return Mono.defer(() -> redis.opsForValue().set(CLAVE_INICIALIZADO + ":" + particion, "1").then())
                 .subscribeOn(redisScheduler);
     }
 

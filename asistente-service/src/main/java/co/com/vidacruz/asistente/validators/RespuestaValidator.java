@@ -1,5 +1,6 @@
 package co.com.vidacruz.asistente.validators;
 
+import co.com.vidacruz.asistente.config.ValidacionProperties;
 import co.com.vidacruz.asistente.domain.FuenteCitada;
 import co.com.vidacruz.asistente.domain.RespuestaLlm;
 import co.com.vidacruz.asistente.domain.SegmentoRecuperado;
@@ -12,7 +13,10 @@ import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/** RN-05: una respuesta solo es válida si cita fuentes reales y no introduce cifras ajenas a ellas. */
+/**
+ * RN-05: una respuesta solo es válida si cita fuentes reales, no menciona protocolos que no cita, no introduce cifras
+ * ajenas a sus fuentes y su vocabulario está respaldado por ellas.
+ */
 @Component
 @RequiredArgsConstructor
 public class RespuestaValidator {
@@ -21,8 +25,10 @@ public class RespuestaValidator {
     private static final Pattern ID_PROTOCOLO = Pattern.compile("PROTO-\\d+");
 
     private final CorpusLoader corpusLoader;
+    private final CoberturaLexica coberturaLexica;
+    private final ValidacionProperties properties;
 
-    public boolean esValida(RespuestaLlm respuesta, List<SegmentoRecuperado> recuperados) {
+    public boolean esValida(String pregunta, RespuestaLlm respuesta, List<SegmentoRecuperado> recuperados) {
         if (respuesta == null || Boolean.TRUE.equals(respuesta.sinProtocolo())
                 || respuesta.respuesta() == null || respuesta.respuesta().isBlank()) {
             return false;
@@ -31,8 +37,11 @@ public class RespuestaValidator {
         if (fuentes == null || fuentes.isEmpty()) {
             return false;
         }
+        String texto = respuesta.respuesta();
         return fuentes.stream().allMatch(fuente -> fuenteReal(fuente, recuperados))
-                && cifrasSustentadas(respuesta.respuesta(), fuentes);
+                && protocolosMencionadosCitados(texto, fuentes)
+                && cifrasSustentadas(texto, fuentes)
+                && coberturaLexica.calcular(texto, pregunta, fuentes) >= properties.coberturaMinima();
     }
 
     private boolean fuenteReal(FuenteCitada fuente, List<SegmentoRecuperado> recuperados) {
@@ -40,6 +49,19 @@ public class RespuestaValidator {
                 && corpusLoader.existe(fuente.protocolo(), fuente.seccion())
                 && recuperados.stream().anyMatch(s -> s.protocolo().equals(fuente.protocolo())
                         && s.seccion().equals(fuente.seccion()));
+    }
+
+    /** Todo PROTO-n que aparezca en el texto debe existir en el corpus y estar entre las fuentes citadas. */
+    private boolean protocolosMencionadosCitados(String texto, List<FuenteCitada> fuentes) {
+        Matcher mencion = ID_PROTOCOLO.matcher(texto);
+        while (mencion.find()) {
+            String id = mencion.group();
+            boolean citado = fuentes.stream().anyMatch(fuente -> id.equals(fuente.protocolo()));
+            if (!citado || !corpusLoader.existeProtocolo(id)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private boolean cifrasSustentadas(String respuesta, List<FuenteCitada> fuentes) {

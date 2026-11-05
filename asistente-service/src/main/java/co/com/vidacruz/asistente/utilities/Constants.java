@@ -59,6 +59,9 @@ public class Constants {
     public static final String HEADER_MOTIVO_DLT = "motivo-dlt";
     public static final String HEADER_CORRELACION_KAFKA = "correlation-id";
 
+    public static final String COD_BUSQUEDA_NO_DISPONIBLE = "BUSQUEDA_NO_DISPONIBLE";
+    public static final String MSG_BUSQUEDA_NO_DISPONIBLE =
+            "La búsqueda en los protocolos no está disponible en este momento. Intente nuevamente en unos instantes.";
     public static final String HEADER_API_KEY = "X-API-Key";
     public static final String COD_NO_AUTORIZADO = "NO_AUTORIZADO";
     public static final String MSG_NO_AUTORIZADO = "La API key es obligatoria y debe ser válida";
@@ -77,7 +80,13 @@ public class Constants {
             "para", "entre", "sobre", "desde", "hasta", "ante", "tras", "segun", "sino", "pero",
             "porque", "esta", "este", "esto", "estas", "estos", "esas", "esos", "puede", "pueden",
             "hago", "hace", "hacer", "debe", "deben", "tiene", "tienen", "cada", "unos", "unas",
-            "algun", "alguna", "otro", "otra", "muy", "mas", "con", "sin", "una", "los", "las");
+            "algun", "alguna", "otro", "otra", "muy", "mas", "con", "sin", "una", "los", "las",
+            "primero", "luego", "despues", "durante", "ademas", "tambien", "existe", "existen", "siempre", "hacia",
+            "dentro", "mediante", "entonces", "igual", "mayor", "menor", "superior", "inferior", "supera", "menos",
+            "antes", "caso", "casos", "cuadro", "solo", "recomienda", "indica", "indican", "considera",
+            "incluye", "incluyen", "requiere", "requieren", "administra", "administre", "administrar", "aplica",
+            "aplicar", "aplicarse", "tomar", "toma", "iniciar", "inicia", "realizar", "utilizar", "usar", "evitar",
+            "mantener", "volver", "estan", "sean", "seran", "sido");
 
     public static final String PROMPT_SISTEMA = """
             Eres el asistente de consulta de protocolos clínicos internos de VidaCruz.

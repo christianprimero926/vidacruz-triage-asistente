@@ -39,7 +39,11 @@ abstract class KafkaRedisITBase {
     }
 
     static void registrarPropiedades(DynamicPropertyRegistry registry, String sufijo) {
-        crearTopics("eventos-" + sufijo, "eventos-" + sufijo + "-dlt");
+        registrarPropiedades(registry, sufijo, 1);
+    }
+
+    static void registrarPropiedades(DynamicPropertyRegistry registry, String sufijo, int particiones) {
+        crearTopics(particiones, "eventos-" + sufijo, "eventos-" + sufijo + "-dlt");
         registry.add("asistente.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
         registry.add("asistente.kafka.topic", () -> "eventos-" + sufijo);
         registry.add("asistente.kafka.topic-dlt", () -> "eventos-" + sufijo + "-dlt");
@@ -49,10 +53,10 @@ abstract class KafkaRedisITBase {
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
     }
 
-    private static void crearTopics(String... nombres) {
+    private static void crearTopics(int particiones, String... nombres) {
         try (AdminClient admin = AdminClient.create(
                 Map.of("bootstrap.servers", KAFKA.getBootstrapServers()))) {
-            admin.createTopics(java.util.Arrays.stream(nombres).map(n -> new NewTopic(n, 1, (short) 1)).toList())
+            admin.createTopics(java.util.Arrays.stream(nombres).map(n -> new NewTopic(n, particiones, (short) 1)).toList())
                     .all().get();
         } catch (InterruptedException | ExecutionException e) {
             throw new IllegalStateException(e);
@@ -64,6 +68,18 @@ abstract class KafkaRedisITBase {
                 + "\",\"version\":1,\"pacienteId\":\"" + pacienteId + "\",\"nivel\":\"" + nivel
                 + "\",\"estado\":\"REGISTRADO\",\"escalado\":false,\"slaMinutos\":5,"
                 + "\"ocurridoEn\":\"2026-11-05T15:00:00Z\",\"correlationId\":\"corr-12345678\"}";
+    }
+
+    static void publicarEnParticion(String topic, int particion, String clave, String valor) {
+        Properties config = new Properties();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        try (KafkaProducer<String, String> productor = new KafkaProducer<>(config)) {
+            productor.send(new ProducerRecord<>(topic, particion, clave, valor)).get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     static void publicar(String topic, String clave, String valor) {

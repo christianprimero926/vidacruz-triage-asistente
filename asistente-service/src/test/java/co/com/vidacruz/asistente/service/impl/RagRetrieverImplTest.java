@@ -11,10 +11,13 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.util.List;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 @DisplayName("RagRetrieverImpl con el modelo de embeddings real")
@@ -24,6 +27,12 @@ class RagRetrieverImplTest {
 
     private static EmbeddingModel embeddingModel;
     private static EmbeddingStore<TextSegment> embeddingStore;
+    private static final Scheduler scheduler = Schedulers.newBoundedElastic(2, 20, "rag-test");
+
+    @AfterAll
+    static void liberar() {
+        scheduler.dispose();
+    }
 
     @BeforeAll
     static void construirIndice() {
@@ -33,7 +42,8 @@ class RagRetrieverImplTest {
     }
 
     private static RagRetrieverImpl retriever(int topK, double scoreMinimo) {
-        return new RagRetrieverImpl(embeddingModel, embeddingStore, new RagProperties(topK, scoreMinimo, 0.80));
+        return new RagRetrieverImpl(embeddingModel, embeddingStore,
+                new RagProperties(topK, scoreMinimo, 0.80, 2, 20, 5), scheduler);
     }
 
     @Nested
@@ -127,7 +137,7 @@ class RagRetrieverImplTest {
 
             StepVerifier.create(retriever(1, 0.0).recuperar("criterios qSOFA")
                             .map(segmentos -> Thread.currentThread().getName()))
-                    .assertNext(hilo -> assertThat(hilo).isNotEqualTo(hiloLlamador).contains("boundedElastic"))
+                    .assertNext(hilo -> assertThat(hilo).isNotEqualTo(hiloLlamador).startsWith("rag-test"))
                     .verifyComplete();
         }
     }
