@@ -13,6 +13,13 @@ public class Constants {
     public static final String RUTA_PACIENTE_POR_ID = "/pacientes/{id}";
     public static final String RUTA_ESTADO = "/pacientes/{id}/estado";
     public static final String RUTA_AUDITORIA = "/pacientes/{id}/auditoria";
+    public static final String RUTA_REPORTE_OPERACION = "/reportes/operacion";
+
+    // Reporte de operación
+    public static final String MSG_FECHA_INVALIDA =
+            "El campo '%s' debe ser una fecha ISO 8601, por ejemplo 2026-11-05T10:00:00Z";
+    public static final String MSG_RANGO_ORDEN = "El campo 'hasta' debe ser posterior a 'desde'";
+    public static final String MSG_RANGO_MAXIMO = "El rango entre 'desde' y 'hasta' no puede superar %d días";
 
     // Códigos y mensajes de transición de estado
     public static final String CODIGO_TRANSICION_INVALIDA = "TRANSICION_INVALIDA";

@@ -16,6 +16,15 @@ public class TriageProperties {
     private Sla sla = new Sla();
     @Valid
     private Jobs jobs = new Jobs();
+    @Valid
+    private Reporte reporte = new Reporte();
+
+    @Data
+    public static class Reporte {
+
+        @Min(1)
+        private int rangoMaximoDias = 31;
+    }
 
     @Data
     public static class Sla {

@@ -18,5 +18,7 @@ public class ConstantsFields {
     public static final String QUEJA_PRINCIPAL = "quejaPrincipal";
     public static final String ID = "id";
     public static final String ESTADO = "estado";
+    public static final String DESDE = "desde";
+    public static final String HASTA = "hasta";
     public static final String CUERPO = "cuerpo";
 }
