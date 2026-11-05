@@ -3,6 +3,7 @@ package co.com.vidacruz.asistente.consumer;
 import static co.com.vidacruz.asistente.utilities.Constants.HEADER_CORRELACION_KAFKA;
 import static co.com.vidacruz.asistente.utilities.Constants.OBSERVACION_EVENTO;
 
+import co.com.vidacruz.asistente.domain.EventoUrgencia;
 import co.com.vidacruz.asistente.exception.EventoInvalidoException;
 import co.com.vidacruz.asistente.utilities.Correlacion;
 import io.micrometer.observation.Observation;
@@ -82,10 +83,18 @@ public class UrgenciasEventConsumer implements SmartLifecycle {
 
     Mono<Void> procesar(ReceiverRecord<String, String> registro) {
         return proyector.proyectar(registro.value())
+                .doOnNext(evento -> registrarAplicado(evento, registro))
+                .then()
                 .onErrorResume(EventoInvalidoException.class,
                         error -> dltPublisher.publicar(registro, error.getMessage()))
                 .then(Mono.defer(() -> reconstruccion.alProcesar(registro.partition(), registro.offset())))
                 .then(Mono.fromRunnable(() -> registro.receiverOffset().acknowledge()));
+    }
+
+    private static void registrarAplicado(EventoUrgencia evento, ReceiverRecord<String, String> registro) {
+        log.info("Evento aplicado: tipo={} pacienteId={} nivel={} particion={} offset={}",
+                evento.tipo().getNombre(), evento.pacienteId(), evento.nivel(), registro.partition(),
+                registro.offset());
     }
 
     /** El span del evento tiene como padre el traceparent de la cabecera Kafka; el correlationId viaja al MDC. */

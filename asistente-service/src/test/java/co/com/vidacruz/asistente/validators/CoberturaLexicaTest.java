@@ -59,4 +59,21 @@ class CoberturaLexicaTest {
         assertThat(cobertura.calcular("reposo nifedipino", "x", dos)).isEqualTo(1.0);
         assertThat(cobertura.calcular("reposo nifedipino", "x", MEDIDAS)).isEqualTo(0.5);
     }
+
+    @Test
+    void shouldBeFull_WhenAnswerOnlyAddsMetaDiscourseWords() {
+        List<FuenteCitada> contraindicaciones = List.of(new FuenteCitada("PROTO-001", "Contraindicaciones"));
+        String respuesta = "No. Según el contexto, en Crisis Hipertensiva, manejo inicial, el Nifedipino sublingual "
+                + "figura en Contraindicaciones.";
+
+        assertThat(cobertura.calcular(respuesta, "¿Se puede usar nifedipino sublingual en una crisis hipertensiva?",
+                contraindicaciones)).isEqualTo(1.0);
+    }
+
+    @Test
+    void shouldStillPenalizeInventedDrug_WhenAnswerUsesMetaDiscourse() {
+        double resultado = cobertura.calcular("Según el contexto, la amoxicilina figura en reposo", "x", MEDIDAS);
+
+        assertThat(resultado).isLessThan(0.85);
+    }
 }

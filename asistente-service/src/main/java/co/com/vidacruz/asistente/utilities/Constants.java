@@ -75,6 +75,11 @@ public class Constants {
 
     public static final int LONGITUD_MINIMA_PALABRA = 4;
     public static final int LONGITUD_RAIZ = 6;
+    /** Palabras del discurso sobre el contexto ("según el contexto, figura en...") que no son contenido clínico. */
+    public static final Set<String> PALABRAS_META = Set.of(
+            "segun", "contexto", "figura", "figuran", "aparece", "aparecen", "indica", "indican", "protocolo",
+            "seccion", "menciona", "mencionan", "establece", "recomienda", "informacion", "corresponde",
+            "consta", "detalla", "describe", "documento", "texto");
     public static final Set<String> STOPWORDS = Set.of(
             "como", "cual", "cuales", "cuando", "donde", "cuanto", "cuantos", "quien", "quienes",
             "para", "entre", "sobre", "desde", "hasta", "ante", "tras", "segun", "sino", "pero",
@@ -92,6 +97,7 @@ public class Constants {
             Eres el asistente de consulta de protocolos clínicos internos de VidaCruz.
             Reglas obligatorias:
             - Responde ÚNICAMENTE con la información del bloque CONTEXTO. No uses conocimiento propio.
+            - No menciones el "contexto", ni "según el contexto" ni "figura en": enuncia directamente el contenido clínico.
             - Si el contexto no alcanza para responder la pregunta, devuelve sinProtocolo=true y no agregues contenido clínico.
             - Redacta con las mismas palabras del contexto, sin sinónimos ni parafraseo, y sin añadir fármacos, vías ni recomendaciones que no aparezcan.
             - Copia las cifras, dosis y umbrales tal cual aparecen en el contexto. No calcules ni agregues cifras nuevas ni uses listas numeradas.

@@ -55,7 +55,7 @@ class EventoProyectorTest {
         void shouldAddToLevelSet_WhenPatientIsRegistered() {
             when(repository.agregar(NivelTriage.CRITICO, "p1")).thenReturn(Mono.empty());
 
-            StepVerifier.create(proyector.proyectar(evento("paciente_registrado", "CRITICO"))).verifyComplete();
+            StepVerifier.create(proyector.proyectar(evento("paciente_registrado", "CRITICO"))).expectNextCount(1).verifyComplete();
 
             verify(repository).agregar(NivelTriage.CRITICO, "p1");
             assertThat(meterRegistry.counter("asistente.eventos", "tipo", "paciente_registrado").count())
@@ -66,8 +66,8 @@ class EventoProyectorTest {
         void shouldKeepPatientActive_WhenPatientEntersConsultationOrIsEscalated() {
             when(repository.agregar(NivelTriage.URGENTE, "p1")).thenReturn(Mono.empty());
 
-            StepVerifier.create(proyector.proyectar(evento("paciente_en_consulta", "URGENTE"))).verifyComplete();
-            StepVerifier.create(proyector.proyectar(evento("paciente_escalado", "URGENTE"))).verifyComplete();
+            StepVerifier.create(proyector.proyectar(evento("paciente_en_consulta", "URGENTE"))).expectNextCount(1).verifyComplete();
+            StepVerifier.create(proyector.proyectar(evento("paciente_escalado", "URGENTE"))).expectNextCount(1).verifyComplete();
 
             verify(repository, times(2)).agregar(NivelTriage.URGENTE, "p1");
             verify(repository, never()).quitar(NivelTriage.URGENTE, "p1");
@@ -77,7 +77,7 @@ class EventoProyectorTest {
         void shouldRemoveFromLevelSet_WhenPatientIsDischarged() {
             when(repository.quitar(NivelTriage.NO_URGENTE, "p1")).thenReturn(Mono.empty());
 
-            StepVerifier.create(proyector.proyectar(evento("paciente_alta", "NO_URGENTE"))).verifyComplete();
+            StepVerifier.create(proyector.proyectar(evento("paciente_alta", "NO_URGENTE"))).expectNextCount(1).verifyComplete();
 
             verify(repository).quitar(NivelTriage.NO_URGENTE, "p1");
             verify(repository, never()).agregar(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
@@ -102,7 +102,7 @@ class EventoProyectorTest {
                             ? Mono.error(new RedisConnectionFailureException("sin conexión"))
                             : Mono.empty()));
 
-            StepVerifier.create(proyector.proyectar(evento("paciente_registrado", "CRITICO"))).verifyComplete();
+            StepVerifier.create(proyector.proyectar(evento("paciente_registrado", "CRITICO"))).expectNextCount(1).verifyComplete();
 
             assertThat(intentos).hasValue(3);
         }
@@ -144,7 +144,7 @@ class EventoProyectorTest {
                             ? Mono.error(new RedisCommandExecutionException("LOADING Redis is loading the dataset"))
                             : Mono.empty()));
 
-            StepVerifier.create(proyector.proyectar(evento("paciente_registrado", "CRITICO"))).verifyComplete();
+            StepVerifier.create(proyector.proyectar(evento("paciente_registrado", "CRITICO"))).expectNextCount(1).verifyComplete();
 
             assertThat(intentos).hasValue(2);
         }

@@ -1,5 +1,7 @@
 package co.com.vidacruz.asistente.validators;
 
+import static co.com.vidacruz.asistente.utilities.Constants.PALABRAS_META;
+
 import co.com.vidacruz.asistente.domain.FuenteCitada;
 import co.com.vidacruz.asistente.service.CorpusLoader;
 import co.com.vidacruz.asistente.utilities.NormalizadorTexto;
@@ -20,12 +22,16 @@ public class CoberturaLexica {
 
     private static final Pattern ID_PROTOCOLO = Pattern.compile("PROTO-\\d+");
 
+    /** Raíces de las palabras meta: no cuentan ni a favor ni en contra de la cobertura. */
+    private static final Set<String> RAICES_META = NormalizadorTexto.raices(String.join(" ", PALABRAS_META));
+
     private final CorpusLoader corpusLoader;
 
     /** Las palabras de la pregunta no cuentan: el modelo las repite sin que digan nada de las fuentes. */
     public double calcular(String respuesta, String pregunta, List<FuenteCitada> fuentes) {
         Set<String> evaluadas = NormalizadorTexto.raices(ID_PROTOCOLO.matcher(respuesta).replaceAll(" "));
         evaluadas.removeAll(NormalizadorTexto.raices(pregunta));
+        evaluadas.removeAll(RAICES_META);
         if (evaluadas.isEmpty()) {
             return 1.0;
         }

@@ -7,6 +7,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import co.com.vidacruz.asistente.consumer.DltPublisher;
+import co.com.vidacruz.asistente.consumer.UrgenciasEventConsumer;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import java.time.Duration;
@@ -38,6 +39,7 @@ class TrazasConsumidorIT extends KafkaRedisITBase {
 
     private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
     private final Logger loggerConsumidor = (Logger) LoggerFactory.getLogger(DltPublisher.class);
+    private final Logger loggerEventoAplicado = (Logger) LoggerFactory.getLogger(UrgenciasEventConsumer.class);
 
     @TestConfiguration
     static class ExportadorEnMemoria {
@@ -59,12 +61,14 @@ class TrazasConsumidorIT extends KafkaRedisITBase {
     void capturarLogs() {
         logs.start();
         loggerConsumidor.addAppender(logs);
+        loggerEventoAplicado.addAppender(logs);
         EXPORTADOR.reset();
     }
 
     @AfterEach
     void liberarLogs() {
         loggerConsumidor.detachAppender(logs);
+        loggerEventoAplicado.detachAppender(logs);
     }
 
     @Test
@@ -102,5 +106,20 @@ class TrazasConsumidorIT extends KafkaRedisITBase {
 
         assertThat(logs.list.stream().filter(e -> e.getFormattedMessage().startsWith("Evento descartado"))
                 .findFirst().orElseThrow().getMDCPropertyMap()).doesNotContainKey("correlationId");
+    }
+
+    @Test
+    void shouldLogAppliedEventWithCorrelationId_WhenEventIsApplied() {
+        publicar(TOPIC, "paciente-3", evento("paciente_registrado", "paciente-3", "CRITICO"),
+                Map.of("correlation-id", "correlacion-aplicado-01"));
+
+        await().atMost(Duration.ofSeconds(30)).until(() -> logs.list.stream()
+                .anyMatch(e -> e.getFormattedMessage().startsWith("Evento aplicado")));
+
+        ILoggingEvent registro = logs.list.stream()
+                .filter(e -> e.getFormattedMessage().startsWith("Evento aplicado")).findFirst().orElseThrow();
+        assertThat(registro.getFormattedMessage())
+                .contains("pacienteId=paciente-3", "nivel=CRITICO", "particion=0", "offset=");
+        assertThat(registro.getMDCPropertyMap()).containsEntry("correlationId", "correlacion-aplicado-01");
     }
 }

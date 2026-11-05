@@ -32,18 +32,19 @@ public class EventoProyector {
     private final UrgenciasRepository repository;
     private final MeterRegistry meterRegistry;
 
-    public Mono<Void> proyectar(String mensaje) {
+    public Mono<EventoUrgencia> proyectar(String mensaje) {
         return Mono.fromCallable(() -> parser.parsear(mensaje)).flatMap(this::aplicar);
     }
 
-    private Mono<Void> aplicar(EventoUrgencia evento) {
+    private Mono<EventoUrgencia> aplicar(EventoUrgencia evento) {
         Mono<Void> operacion = evento.tipo().isActiva()
                 ? repository.agregar(evento.nivel(), evento.pacienteId())
                 : repository.quitar(evento.nivel(), evento.pacienteId());
         return operacion.retryWhen(REINTENTO_REDIS)
                 .onErrorMap(RedisErrorPermanente::esPermanente, error -> new EventoInvalidoException(
                         "Redis rechazó el comando: " + Saneador.limpiar(error.getMessage()), error))
-                .doOnSuccess(vacio -> meterRegistry.counter(METRICA_EVENTOS, TAG_TIPO, evento.tipo().getNombre())
+                .thenReturn(evento)
+                .doOnNext(aplicado -> meterRegistry.counter(METRICA_EVENTOS, TAG_TIPO, evento.tipo().getNombre())
                         .increment());
     }
 }
