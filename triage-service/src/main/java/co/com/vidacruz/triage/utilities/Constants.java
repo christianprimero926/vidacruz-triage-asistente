@@ -14,6 +14,13 @@ public class Constants {
     public static final String RUTA_ESTADO = "/pacientes/{id}/estado";
     public static final String RUTA_AUDITORIA = "/pacientes/{id}/auditoria";
     public static final String RUTA_REPORTE_OPERACION = "/reportes/operacion";
+    public static final String RUTA_ALERTAS = "/alertas";
+
+    // Alertas
+    public static final int LIMITE_ALERTAS = 200;
+    public static final String MSG_WEBHOOK_NO_CONFIGURADO = "webhook no configurado";
+    public static final String MSG_ALERTA_TEXTO =
+            "[TRIAGE] Paciente %s nivel %s escalado: superó SLA de %d min (lleva %d min)";
 
     // Reporte de operación
     public static final String MSG_FECHA_INVALIDA =

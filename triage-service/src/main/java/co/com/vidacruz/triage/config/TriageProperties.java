@@ -19,6 +19,23 @@ public class TriageProperties {
     @Valid
     private Reporte reporte = new Reporte();
 
+    @Valid
+    private Alertas alertas = new Alertas();
+
+    @Data
+    public static class Alertas {
+
+        /** Vacía deja las alertas en FALLIDA con "webhook no configurado". La URL es secreta: no se registra. */
+        private String webhookUrl;
+        @Min(1)
+        private int timeoutMs = 3000;
+        @Min(1)
+        private int maxIntentos = 5;
+        /** Espera tras el primer fallo; se duplica en cada reintento. */
+        @Min(1)
+        private long esperaBaseMs = 30000;
+    }
+
     @Data
     public static class Reporte {
 
@@ -64,5 +81,9 @@ public class TriageProperties {
         private long slaIntervaloMs = 15000;
         @Min(1)
         private int slaLote = 100;
+        @Min(1)
+        private long alertasIntervaloMs = 2000;
+        @Min(1)
+        private int alertasLote = 20;
     }
 }

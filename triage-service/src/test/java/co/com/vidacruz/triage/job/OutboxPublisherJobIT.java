@@ -177,7 +177,7 @@ class OutboxPublisherJobIT extends AbstractIT {
                     crearPaciente(PacienteFixtures.e3()), crearPaciente(PacienteFixtures.e4()),
                     crearPaciente(PacienteFixtures.e5()));
 
-            Mono.zip(job.ejecutar(), job.ejecutar()).block(ESPERA);
+            Mono.when(job.ejecutar(), job.ejecutar()).block(ESPERA);
 
             assertThat(leer(ids, 5)).hasSize(5);
         }
