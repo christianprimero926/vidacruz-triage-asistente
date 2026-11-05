@@ -53,9 +53,16 @@ public class ConsultaServiceImpl implements ConsultaService {
 
     private Mono<ConsultaResponseDTO> consultarLlm(String pregunta, List<SegmentoRecuperado> segmentos) {
         return llmGateway.consultar(pregunta, segmentos)
-                .map(respuesta -> respuestaValidator.esValida(respuesta, segmentos)
-                        ? conFuentes(respuesta)
-                        : sinProtocolo(TIPO_INVALIDA));
+                .map(respuesta -> aRespuesta(respuesta, segmentos));
+    }
+
+    private ConsultaResponseDTO aRespuesta(RespuestaLlm respuesta, List<SegmentoRecuperado> segmentos) {
+        if (Boolean.TRUE.equals(respuesta.sinProtocolo())) {
+            return sinProtocolo(TIPO_SIN_PROTOCOLO);
+        }
+        return respuestaValidator.esValida(respuesta, segmentos)
+                ? conFuentes(respuesta)
+                : sinProtocolo(TIPO_INVALIDA);
     }
 
     private ConsultaResponseDTO conFuentes(RespuestaLlm respuesta) {

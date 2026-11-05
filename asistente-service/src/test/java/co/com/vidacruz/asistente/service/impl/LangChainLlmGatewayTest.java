@@ -2,17 +2,24 @@ package co.com.vidacruz.asistente.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import co.com.vidacruz.asistente.config.LlmProperties;
 import co.com.vidacruz.asistente.domain.SegmentoRecuperado;
 import co.com.vidacruz.asistente.exception.LlmNoDisponibleException;
+import co.com.vidacruz.asistente.service.LlmResilience;
 import co.com.vidacruz.asistente.service.PromptBuilder;
 import co.com.vidacruz.asistente.service.RespuestaLlmParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
@@ -40,9 +47,15 @@ class LangChainLlmGatewayTest {
     private ChatModel chatModel;
 
     private Scheduler scheduler;
+    private CircuitBreakerRegistry registry;
+    private SimpleMeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
+        registry = CircuitBreakerRegistry.ofDefaults();
+        registry.circuitBreaker("llm", CircuitBreakerConfig.custom().slidingWindowSize(4)
+                .minimumNumberOfCalls(2).failureRateThreshold(50).build());
+        meterRegistry = new SimpleMeterRegistry();
         scheduler = Schedulers.newBoundedElastic(2, 10, "llm-test");
     }
 
@@ -52,9 +65,10 @@ class LangChainLlmGatewayTest {
     }
 
     private LangChainLlmGateway gateway(String apiKey) {
-        LlmProperties properties = new LlmProperties(apiKey, "http://localhost", "modelo", 2, 2, 10);
+        LlmProperties properties = new LlmProperties(apiKey, "http://localhost", "modelo", 1, 2, 10);
         return new LangChainLlmGateway(chatModel, new PromptBuilder(),
-                new RespuestaLlmParser(new ObjectMapper()), properties, scheduler);
+                new RespuestaLlmParser(new ObjectMapper()), properties, scheduler,
+                new LlmResilience(registry, meterRegistry));
     }
 
     private static ChatResponse respondeCon(String texto) {
@@ -100,5 +114,63 @@ class LangChainLlmGatewayTest {
         StepVerifier.create(gateway("clave").consultar("¿medidas?", CONTEXTO))
                 .expectError(LlmNoDisponibleException.class)
                 .verify();
+    }
+
+    private void fallarVeces(LangChainLlmGateway gateway, int veces) {
+        for (int i = 0; i < veces; i++) {
+            StepVerifier.create(gateway.consultar("¿medidas?", CONTEXTO))
+                    .expectError(LlmNoDisponibleException.class).verify();
+        }
+    }
+
+    private long muestras(String resultado) {
+        return meterRegistry.timer("asistente.llm.latencia", "resultado", resultado).count();
+    }
+
+    @Test
+    void shouldFailAsLlmNoDisponible_WhenModelExceedsTimeout() {
+        when(chatModel.chat(any(ChatRequest.class))).thenAnswer(invocacion -> {
+            Thread.sleep(5000);
+            return respondeCon(JSON);
+        });
+
+        StepVerifier.create(gateway("clave").consultar("¿medidas?", CONTEXTO))
+                .expectError(LlmNoDisponibleException.class)
+                .verify();
+        assertThat(muestras("error")).isEqualTo(1);
+    }
+
+    @Test
+    void shouldOpenCircuitAndNotCallModel_WhenFailureRateExceedsThreshold() {
+        when(chatModel.chat(any(ChatRequest.class))).thenThrow(new IllegalStateException("HTTP 500"));
+        LangChainLlmGateway gateway = gateway("clave");
+
+        fallarVeces(gateway, 2);
+        assertThat(registry.circuitBreaker("llm").getState()).isEqualTo(CircuitBreaker.State.OPEN);
+        fallarVeces(gateway, 3);
+
+        verify(chatModel, times(2)).chat(any(ChatRequest.class));
+        assertThat(muestras("error")).isEqualTo(2);
+        assertThat(muestras("circuito_abierto")).isEqualTo(3);
+    }
+
+    @Test
+    void shouldRecordOkLatency_WhenModelResponds() {
+        when(chatModel.chat(any(ChatRequest.class))).thenReturn(respondeCon(JSON));
+
+        StepVerifier.create(gateway("clave").consultar("¿medidas?", CONTEXTO)).expectNextCount(1).verifyComplete();
+
+        assertThat(muestras("ok")).isEqualTo(1);
+        assertThat(muestras("error")).isZero();
+    }
+
+    @Test
+    void shouldCountUnreadableJsonAsFailureOfTheCircuit_WhenModelReturnsGarbage() {
+        when(chatModel.chat(any(ChatRequest.class))).thenReturn(respondeCon("basura"));
+        LangChainLlmGateway gateway = gateway("clave");
+
+        fallarVeces(gateway, 2);
+
+        assertThat(registry.circuitBreaker("llm").getState()).isEqualTo(CircuitBreaker.State.OPEN);
     }
 }

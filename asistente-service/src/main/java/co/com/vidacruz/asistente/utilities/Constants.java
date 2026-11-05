@@ -40,6 +40,13 @@ public class Constants {
     public static final String TIPO_SIN_PROTOCOLO = "sin_protocolo";
     public static final String TIPO_INVALIDA = "invalida";
 
+    public static final String CIRCUIT_BREAKER_LLM = "llm";
+    public static final String METRICA_LATENCIA_LLM = "asistente.llm.latencia";
+    public static final String TAG_RESULTADO = "resultado";
+    public static final String RESULTADO_OK = "ok";
+    public static final String RESULTADO_ERROR = "error";
+    public static final String RESULTADO_CIRCUITO_ABIERTO = "circuito_abierto";
+
     public static final int LONGITUD_MINIMA_PALABRA = 4;
     public static final int LONGITUD_RAIZ = 6;
     public static final Set<String> STOPWORDS = Set.of(

@@ -156,6 +156,21 @@ class ConsultaServiceImplTest {
         }
     }
 
+    @Test
+    void shouldCountAsSinProtocoloNotInvalida_WhenLlmDeclaresSinProtocolo() {
+        RespuestaLlm llm = new RespuestaLlm("", List.of(), true);
+        when(ragRetriever.recuperar(PREGUNTA)).thenReturn(Mono.just(SEGMENTOS));
+        when(compuerta.pasa(PREGUNTA, SEGMENTOS)).thenReturn(true);
+        when(llmGateway.consultar(PREGUNTA, SEGMENTOS)).thenReturn(Mono.just(llm));
+
+        StepVerifier.create(service.consultar(pregunta()))
+                .assertNext(respuesta -> assertThat(respuesta.getRespuesta()).isEqualTo(AVISO))
+                .verifyComplete();
+
+        assertThat(contador("sin_protocolo")).isEqualTo(1.0);
+        assertThat(contador("invalida")).isZero();
+    }
+
     @Nested
     @DisplayName("Validación de entrada")
     class Validacion {
