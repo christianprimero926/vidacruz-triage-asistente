@@ -47,6 +47,17 @@ public class Constants {
     public static final String RESULTADO_ERROR = "error";
     public static final String RESULTADO_CIRCUITO_ABIERTO = "circuito_abierto";
 
+    public static final String RUTA_ESTADO_URGENCIAS = "/estado-urgencias";
+    public static final String COD_ESTADO_NO_DISPONIBLE = "ESTADO_URGENCIAS_NO_DISPONIBLE";
+    public static final String MSG_ESTADO_NO_DISPONIBLE =
+            "El estado de urgencias no está disponible en este momento. Intente nuevamente en unos instantes.";
+    public static final String PREFIJO_CLAVE_ACTIVOS = "urgencias:activos:";
+    public static final String CLAVE_INICIALIZADO = "urgencias:inicializado";
+    public static final String METRICA_EVENTOS = "asistente.eventos";
+    public static final String TIPO_EVENTO_INVALIDO = "invalido";
+    public static final String HEADER_MOTIVO_DLT = "motivo-dlt";
+    public static final String HEADER_CORRELACION_KAFKA = "correlation-id";
+
     public static final int LONGITUD_MINIMA_PALABRA = 4;
     public static final int LONGITUD_RAIZ = 6;
     public static final Set<String> STOPWORDS = Set.of(
