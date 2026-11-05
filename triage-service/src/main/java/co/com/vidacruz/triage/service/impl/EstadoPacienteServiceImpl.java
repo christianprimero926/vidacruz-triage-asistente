@@ -16,6 +16,7 @@ import co.com.vidacruz.triage.exception.TransicionInvalidaException;
 import co.com.vidacruz.triage.mapper.PacienteMapper;
 import co.com.vidacruz.triage.repository.PacienteRepository;
 import co.com.vidacruz.triage.service.AuditoriaService;
+import co.com.vidacruz.triage.service.OutboxService;
 import co.com.vidacruz.triage.service.EstadoPacienteService;
 import co.com.vidacruz.triage.validators.EstadoValidator;
 import java.time.Clock;
@@ -39,6 +40,7 @@ public class EstadoPacienteServiceImpl implements EstadoPacienteService {
     private final EstadoValidator validator;
     private final PacienteRepository pacienteRepository;
     private final AuditoriaService auditoriaService;
+    private final OutboxService outboxService;
     private final PacienteMapper mapper;
     private final R2dbcEntityTemplate template;
     private final Clock clock;
@@ -60,11 +62,13 @@ public class EstadoPacienteServiceImpl implements EstadoPacienteService {
             return Mono.error(new TransicionInvalidaException(origen, destino));
         }
         Instant ahora = clock.instant();
+        Paciente actualizado = paciente.toBuilder().estado(destino).fechaEstado(ahora).build();
         return actualizarSiSigueEn(paciente.getId(), origen, destino, ahora)
                 .flatMap(filas -> filas == 0 ? Mono.error(conflictoConcurrente()) : Mono.just(filas))
                 .then(Mono.defer(() -> auditoriaService.registrar(auditoriaDe(paciente.getId(), origen, destino, ahora))))
-                .thenReturn(paciente.toBuilder().estado(destino).fechaEstado(ahora).build())
-                .doOnSuccess(actualizado -> log.info("Paciente id={} pasó de {} a {}", paciente.getId(), origen, destino));
+                .then(Mono.defer(() -> outboxService.registrar(actualizado, TipoEvento.paraEstado(destino), ahora)))
+                .thenReturn(actualizado)
+                .doOnSuccess(resultado -> log.info("Paciente id={} pasó de {} a {}", paciente.getId(), origen, destino));
     }
 
     /** UPDATE condicional: si otro cambió el estado antes, no afecta filas y se informa el conflicto. */

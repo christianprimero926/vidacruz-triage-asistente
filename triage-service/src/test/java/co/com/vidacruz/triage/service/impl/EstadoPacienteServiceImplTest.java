@@ -2,6 +2,7 @@ package co.com.vidacruz.triage.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -12,6 +13,7 @@ import co.com.vidacruz.triage.domain.AuditoriaClinica;
 import co.com.vidacruz.triage.domain.EstadoPaciente;
 import co.com.vidacruz.triage.domain.NivelTriage;
 import co.com.vidacruz.triage.domain.Paciente;
+import co.com.vidacruz.triage.domain.TipoEvento;
 import co.com.vidacruz.triage.dto.request.EstadoRequestDTO;
 import co.com.vidacruz.triage.exception.BusinessException;
 import co.com.vidacruz.triage.exception.ErrorType;
@@ -21,6 +23,7 @@ import co.com.vidacruz.triage.exception.ValidationException;
 import co.com.vidacruz.triage.mapper.PacienteMapperImpl;
 import co.com.vidacruz.triage.repository.PacienteRepository;
 import co.com.vidacruz.triage.service.AuditoriaService;
+import co.com.vidacruz.triage.service.OutboxService;
 import co.com.vidacruz.triage.validators.EstadoValidator;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -52,6 +55,8 @@ class EstadoPacienteServiceImplTest {
     private PacienteRepository pacienteRepository;
     @Mock
     private AuditoriaService auditoriaService;
+    @Mock
+    private OutboxService outboxService;
 
     private R2dbcEntityTemplate template;
     private EstadoPacienteServiceImpl service;
@@ -60,7 +65,7 @@ class EstadoPacienteServiceImplTest {
     @BeforeEach
     void setUp() {
         template = mock(R2dbcEntityTemplate.class, RETURNS_DEEP_STUBS);
-        service = new EstadoPacienteServiceImpl(new EstadoValidator(), pacienteRepository, auditoriaService,
+        service = new EstadoPacienteServiceImpl(new EstadoValidator(), pacienteRepository, auditoriaService, outboxService,
                 new PacienteMapperImpl(), template, Clock.fixed(AHORA, ZoneOffset.UTC));
     }
 
@@ -79,6 +84,7 @@ class EstadoPacienteServiceImplTest {
     void shouldUpdateAndAudit_WhenTransitionIsValid() {
         when(pacienteRepository.findById(id)).thenReturn(Mono.just(paciente(EstadoPaciente.REGISTRADO)));
         when(auditoriaService.registrar(any(AuditoriaClinica.class))).thenReturn(Mono.empty());
+        when(outboxService.registrar(any(Paciente.class), any(TipoEvento.class), any(Instant.class))).thenReturn(Mono.empty());
         filasActualizadas(1);
 
         StepVerifier.create(service.cambiarEstado(id, new EstadoRequestDTO("EN_CONSULTA")))
@@ -90,11 +96,14 @@ class EstadoPacienteServiceImplTest {
                 .verifyComplete();
 
         ArgumentCaptor<AuditoriaClinica> auditoria = ArgumentCaptor.forClass(AuditoriaClinica.class);
+        ArgumentCaptor<Paciente> actualizado = ArgumentCaptor.forClass(Paciente.class);
         verify(auditoriaService).registrar(auditoria.capture());
         assertThat(auditoria.getValue().getTipoEvento()).isEqualTo("paciente_en_consulta");
         assertThat(auditoria.getValue().getEstadoAnterior()).isEqualTo("REGISTRADO");
         assertThat(auditoria.getValue().getEstadoNuevo()).isEqualTo("EN_CONSULTA");
         assertThat(auditoria.getValue().getFechaEvento()).isEqualTo(AHORA);
+        verify(outboxService).registrar(actualizado.capture(), eq(TipoEvento.PACIENTE_EN_CONSULTA), eq(AHORA));
+        assertThat(actualizado.getValue().getEstado()).isEqualTo(EstadoPaciente.EN_CONSULTA);
     }
 
     @Test
@@ -110,7 +119,7 @@ class EstadoPacienteServiceImplTest {
                 })
                 .verify(Duration.ofSeconds(2));
 
-        verifyNoInteractions(auditoriaService);
+        verifyNoInteractions(auditoriaService, outboxService);
     }
 
     @Test
@@ -124,7 +133,7 @@ class EstadoPacienteServiceImplTest {
                         .isEqualTo("CONFLICTO_CONCURRENTE"))
                 .verify();
 
-        verifyNoInteractions(auditoriaService);
+        verifyNoInteractions(auditoriaService, outboxService);
     }
 
     @Test

@@ -14,6 +14,8 @@ public class TriageProperties {
 
     @Valid
     private Sla sla = new Sla();
+    @Valid
+    private Jobs jobs = new Jobs();
 
     @Data
     public static class Sla {
@@ -38,5 +40,16 @@ public class TriageProperties {
                 case NO_URGENTE_2 -> noUrgente2Minutos;
             };
         }
+    }
+
+    @Data
+    public static class Jobs {
+
+        /** En los tests se apaga y se llama a ejecutar() a mano. */
+        private boolean enabled = true;
+        @Min(1)
+        private long outboxIntervaloMs = 500;
+        @Min(1)
+        private int outboxLote = 100;
     }
 }

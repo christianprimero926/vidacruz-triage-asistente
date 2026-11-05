@@ -12,6 +12,7 @@ import co.com.vidacruz.triage.dto.response.PacienteResponseDTO;
 import co.com.vidacruz.triage.exception.PacienteNoEncontradoException;
 import co.com.vidacruz.triage.mapper.PacienteMapper;
 import co.com.vidacruz.triage.service.AuditoriaService;
+import co.com.vidacruz.triage.service.OutboxService;
 import co.com.vidacruz.triage.repository.PacienteRepository;
 import co.com.vidacruz.triage.service.PacienteService;
 import co.com.vidacruz.triage.service.TriageClassifier;
@@ -39,6 +40,7 @@ public class PacienteServiceImpl implements PacienteService {
     private final R2dbcEntityTemplate template;
     private final PacienteRepository pacienteRepository;
     private final AuditoriaService auditoriaService;
+    private final OutboxService outboxService;
     private final Clock clock;
 
     /** Paciente y auditoría se confirman juntos o no se guarda nada. */
@@ -48,6 +50,7 @@ public class PacienteServiceImpl implements PacienteService {
         return Mono.fromSupplier(() -> construirPaciente(request))
                 .flatMap(paciente -> template.insert(paciente))
                 .flatMap(this::registrarAuditoria)
+                .flatMap(this::registrarEvento)
                 .doOnNext(paciente -> log.info("Paciente registrado id={} nivel={}", paciente.getId(), paciente.getNivel()))
                 .map(mapper::toRegistradoResponse);
     }
@@ -74,6 +77,11 @@ public class PacienteServiceImpl implements PacienteService {
                 .fechaEstado(ahora)
                 .slaVenceEn(ahora.plus(Duration.ofMinutes(slaMinutos)))
                 .build();
+    }
+
+    private Mono<Paciente> registrarEvento(Paciente paciente) {
+        return outboxService.registrar(paciente, TipoEvento.PACIENTE_REGISTRADO, paciente.getFechaRegistro())
+                .thenReturn(paciente);
     }
 
     private Mono<Paciente> registrarAuditoria(Paciente paciente) {

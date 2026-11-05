@@ -23,6 +23,12 @@ public class Constants {
             "El paciente cambió de estado mientras se procesaba la solicitud; consulte su estado actual e intente de nuevo";
     public static final String MSG_ESTADO_INVALIDO = "El campo '%s' debe ser uno de: %s";
 
+    // Outbox y Kafka
+    public static final long OUTBOX_LOCK_KEY = 7_301_001L;
+    public static final String HEADER_TIPO_EVENTO = "tipo-evento";
+    public static final String HEADER_CORRELATION_KAFKA = "correlation-id";
+    public static final String HEADER_TRACEPARENT = "traceparent";
+
     // Cabeceras
     public static final String HEADER_CORRELATION_ID = "X-Correlation-Id";
 

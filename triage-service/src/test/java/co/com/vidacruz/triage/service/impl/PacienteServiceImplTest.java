@@ -11,10 +11,12 @@ import co.com.vidacruz.triage.domain.AuditoriaClinica;
 import co.com.vidacruz.triage.domain.EstadoPaciente;
 import co.com.vidacruz.triage.domain.NivelTriage;
 import co.com.vidacruz.triage.domain.Paciente;
+import co.com.vidacruz.triage.domain.TipoEvento;
 import co.com.vidacruz.triage.exception.PacienteNoEncontradoException;
 import co.com.vidacruz.triage.exception.ValidationException;
 import co.com.vidacruz.triage.mapper.PacienteMapperImpl;
 import co.com.vidacruz.triage.service.AuditoriaService;
+import co.com.vidacruz.triage.service.OutboxService;
 import co.com.vidacruz.triage.repository.PacienteRepository;
 import co.com.vidacruz.triage.service.TriageClassifier;
 import co.com.vidacruz.triage.support.PacienteFixtures;
@@ -49,13 +51,15 @@ class PacienteServiceImplTest {
     private PacienteRepository pacienteRepository;
     @Mock
     private AuditoriaService auditoriaService;
+    @Mock
+    private OutboxService outboxService;
 
     private PacienteServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new PacienteServiceImpl(new PacienteValidator(), new TriageClassifier(), new TriageProperties(),
-                new PacienteMapperImpl(), template, pacienteRepository, auditoriaService,
+                new PacienteMapperImpl(), template, pacienteRepository, auditoriaService, outboxService,
                 Clock.fixed(AHORA, ZoneOffset.UTC));
     }
 
@@ -68,6 +72,7 @@ class PacienteServiceImplTest {
         void shouldPersistPacienteAndAuditoria_WhenRequestIsValid() {
             when(template.insert(any(Paciente.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
             when(auditoriaService.registrar(any(AuditoriaClinica.class))).thenReturn(Mono.empty());
+            when(outboxService.registrar(any(Paciente.class), any(TipoEvento.class), any(Instant.class))).thenReturn(Mono.empty());
             var request = PacienteFixtures.base().nombreCompleto("  Ana Ruiz  ").quejaPrincipal(" Mareo ")
                     .frecuenciaCardiaca(130).build();
 
@@ -96,6 +101,7 @@ class PacienteServiceImplTest {
             assertThat(auditoria.getValue().getEstadoAnterior()).isNull();
             assertThat(auditoria.getValue().getEstadoNuevo()).isEqualTo("REGISTRADO");
             assertThat(auditoria.getValue().getFechaEvento()).isEqualTo(AHORA);
+            verify(outboxService).registrar(paciente.getValue(), TipoEvento.PACIENTE_REGISTRADO, AHORA);
         }
 
         @Test
@@ -104,10 +110,11 @@ class PacienteServiceImplTest {
             var properties = new TriageProperties();
             properties.getSla().setNoUrgente2Minutos(3);
             service = new PacienteServiceImpl(new PacienteValidator(), new TriageClassifier(), properties,
-                    new PacienteMapperImpl(), template, pacienteRepository, auditoriaService,
+                    new PacienteMapperImpl(), template, pacienteRepository, auditoriaService, outboxService,
                     Clock.fixed(AHORA, ZoneOffset.UTC));
             when(template.insert(any(Paciente.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
             when(auditoriaService.registrar(any(AuditoriaClinica.class))).thenReturn(Mono.empty());
+            when(outboxService.registrar(any(Paciente.class), any(TipoEvento.class), any(Instant.class))).thenReturn(Mono.empty());
 
             StepVerifier.create(service.registrar(PacienteFixtures.e5()))
                     .assertNext(respuesta -> {
@@ -126,7 +133,7 @@ class PacienteServiceImplTest {
                     .expectError(ValidationException.class)
                     .verify();
 
-            verifyNoInteractions(template, auditoriaService);
+            verifyNoInteractions(template, auditoriaService, outboxService);
         }
 
         @Test
