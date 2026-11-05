@@ -14,7 +14,7 @@ import co.com.vidacruz.triage.domain.Paciente;
 import co.com.vidacruz.triage.exception.PacienteNoEncontradoException;
 import co.com.vidacruz.triage.exception.ValidationException;
 import co.com.vidacruz.triage.mapper.PacienteMapperImpl;
-import co.com.vidacruz.triage.repository.AuditoriaRepository;
+import co.com.vidacruz.triage.service.AuditoriaService;
 import co.com.vidacruz.triage.repository.PacienteRepository;
 import co.com.vidacruz.triage.service.TriageClassifier;
 import co.com.vidacruz.triage.support.PacienteFixtures;
@@ -48,14 +48,14 @@ class PacienteServiceImplTest {
     @Mock
     private PacienteRepository pacienteRepository;
     @Mock
-    private AuditoriaRepository auditoriaRepository;
+    private AuditoriaService auditoriaService;
 
     private PacienteServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new PacienteServiceImpl(new PacienteValidator(), new TriageClassifier(), new TriageProperties(),
-                new PacienteMapperImpl(), template, pacienteRepository, auditoriaRepository,
+                new PacienteMapperImpl(), template, pacienteRepository, auditoriaService,
                 Clock.fixed(AHORA, ZoneOffset.UTC));
     }
 
@@ -67,7 +67,7 @@ class PacienteServiceImplTest {
         @DisplayName("clasifica, calcula el SLA y guarda paciente y auditoría")
         void shouldPersistPacienteAndAuditoria_WhenRequestIsValid() {
             when(template.insert(any(Paciente.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
-            when(auditoriaRepository.save(any(AuditoriaClinica.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+            when(auditoriaService.registrar(any(AuditoriaClinica.class))).thenReturn(Mono.empty());
             var request = PacienteFixtures.base().nombreCompleto("  Ana Ruiz  ").quejaPrincipal(" Mareo ")
                     .frecuenciaCardiaca(130).build();
 
@@ -90,7 +90,7 @@ class PacienteServiceImplTest {
             assertThat(paciente.getValue().getSlaVenceEn()).isEqualTo(AHORA.plus(Duration.ofMinutes(5)));
 
             ArgumentCaptor<AuditoriaClinica> auditoria = ArgumentCaptor.forClass(AuditoriaClinica.class);
-            verify(auditoriaRepository).save(auditoria.capture());
+            verify(auditoriaService).registrar(auditoria.capture());
             assertThat(auditoria.getValue().getPacienteId()).isEqualTo(paciente.getValue().getId());
             assertThat(auditoria.getValue().getTipoEvento()).isEqualTo("paciente_registrado");
             assertThat(auditoria.getValue().getEstadoAnterior()).isNull();
@@ -104,10 +104,10 @@ class PacienteServiceImplTest {
             var properties = new TriageProperties();
             properties.getSla().setNoUrgente2Minutos(3);
             service = new PacienteServiceImpl(new PacienteValidator(), new TriageClassifier(), properties,
-                    new PacienteMapperImpl(), template, pacienteRepository, auditoriaRepository,
+                    new PacienteMapperImpl(), template, pacienteRepository, auditoriaService,
                     Clock.fixed(AHORA, ZoneOffset.UTC));
             when(template.insert(any(Paciente.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
-            when(auditoriaRepository.save(any(AuditoriaClinica.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
+            when(auditoriaService.registrar(any(AuditoriaClinica.class))).thenReturn(Mono.empty());
 
             StepVerifier.create(service.registrar(PacienteFixtures.e5()))
                     .assertNext(respuesta -> {
@@ -126,14 +126,14 @@ class PacienteServiceImplTest {
                     .expectError(ValidationException.class)
                     .verify();
 
-            verifyNoInteractions(template, auditoriaRepository);
+            verifyNoInteractions(template, auditoriaService);
         }
 
         @Test
         @DisplayName("propaga el error si la auditoría falla, para que se revierta la transacción")
         void shouldPropagateError_WhenAuditoriaFails() {
             when(template.insert(any(Paciente.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
-            when(auditoriaRepository.save(any(AuditoriaClinica.class))).thenReturn(Mono.error(new IllegalStateException("fallo")));
+            when(auditoriaService.registrar(any(AuditoriaClinica.class))).thenReturn(Mono.error(new IllegalStateException("fallo")));
 
             StepVerifier.create(service.registrar(PacienteFixtures.e4()))
                     .expectError(IllegalStateException.class)

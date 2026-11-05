@@ -11,7 +11,7 @@ import co.com.vidacruz.triage.dto.response.PacienteRegistradoResponseDTO;
 import co.com.vidacruz.triage.dto.response.PacienteResponseDTO;
 import co.com.vidacruz.triage.exception.PacienteNoEncontradoException;
 import co.com.vidacruz.triage.mapper.PacienteMapper;
-import co.com.vidacruz.triage.repository.AuditoriaRepository;
+import co.com.vidacruz.triage.service.AuditoriaService;
 import co.com.vidacruz.triage.repository.PacienteRepository;
 import co.com.vidacruz.triage.service.PacienteService;
 import co.com.vidacruz.triage.service.TriageClassifier;
@@ -38,7 +38,7 @@ public class PacienteServiceImpl implements PacienteService {
     private final PacienteMapper mapper;
     private final R2dbcEntityTemplate template;
     private final PacienteRepository pacienteRepository;
-    private final AuditoriaRepository auditoriaRepository;
+    private final AuditoriaService auditoriaService;
     private final Clock clock;
 
     /** Paciente y auditoría se confirman juntos o no se guarda nada. */
@@ -83,6 +83,6 @@ public class PacienteServiceImpl implements PacienteService {
                 .estadoNuevo(EstadoPaciente.REGISTRADO.name())
                 .fechaEvento(paciente.getFechaRegistro())
                 .build();
-        return auditoriaRepository.save(auditoria).thenReturn(paciente);
+        return auditoriaService.registrar(auditoria).thenReturn(paciente);
     }
 }

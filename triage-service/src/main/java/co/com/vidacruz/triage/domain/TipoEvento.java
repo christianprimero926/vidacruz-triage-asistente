@@ -13,4 +13,13 @@ public enum TipoEvento {
     PACIENTE_ESCALADO("paciente_escalado");
 
     private final String nombre;
+
+    /** Evento que corresponde a entrar a un estado; REGISTRADO solo se alcanza al registrar. */
+    public static TipoEvento paraEstado(EstadoPaciente estado) {
+        return switch (estado) {
+            case REGISTRADO -> PACIENTE_REGISTRADO;
+            case EN_CONSULTA -> PACIENTE_EN_CONSULTA;
+            case ALTA -> PACIENTE_ALTA;
+        };
+    }
 }

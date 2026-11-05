@@ -11,6 +11,17 @@ public class Constants {
     public static final String RUTA_BASE_TRIAGE = "/triage";
     public static final String RUTA_PACIENTES = "/pacientes";
     public static final String RUTA_PACIENTE_POR_ID = "/pacientes/{id}";
+    public static final String RUTA_ESTADO = "/pacientes/{id}/estado";
+    public static final String RUTA_AUDITORIA = "/pacientes/{id}/auditoria";
+
+    // Códigos y mensajes de transición de estado
+    public static final String CODIGO_TRANSICION_INVALIDA = "TRANSICION_INVALIDA";
+    public static final String CODIGO_CONFLICTO_CONCURRENTE = "CONFLICTO_CONCURRENTE";
+    public static final String MSG_TRANSICION_INVALIDA = "No se puede pasar de %s a %s. Transiciones válidas desde %s: %s";
+    public static final String MSG_SIN_TRANSICIONES = "ninguna";
+    public static final String MSG_CONFLICTO_CONCURRENTE =
+            "El paciente cambió de estado mientras se procesaba la solicitud; consulte su estado actual e intente de nuevo";
+    public static final String MSG_ESTADO_INVALIDO = "El campo '%s' debe ser uno de: %s";
 
     // Cabeceras
     public static final String HEADER_CORRELATION_ID = "X-Correlation-Id";

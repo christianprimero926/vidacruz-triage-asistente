@@ -59,6 +59,9 @@ public class GeneralExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorResponseDTO> handleResponseStatus(ResponseStatusException ex, ServerWebExchange exchange) {
         HttpStatusCode status = ex.getStatusCode();
+        if (status.is5xxServerError()) {
+            return handleUnexpected(ex, exchange);
+        }
         return responder(status, codigoPara(status), mensajePara(status), null, exchange);
     }
 
