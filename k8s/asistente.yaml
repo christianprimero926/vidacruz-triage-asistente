@@ -28,6 +28,21 @@ spec:
         runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
+      initContainers:
+        - name: esperar-kafka
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z kafka 9092; do echo esperando kafka:9092; sleep 2; done"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 8Mi
+            limits:
+              memory: 16Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
       containers:
         - name: asistente-service
           image: asistente-service
