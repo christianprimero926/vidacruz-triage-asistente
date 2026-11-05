@@ -18,7 +18,7 @@ El asistente debe responder solo con base en tres protocolos clínicos y decir q
 1. Compuerta de relevancia, antes del LLM.
 2. Prompt: responder solo con el contexto, copiar cifras tal cual y devolver JSON con `sinProtocolo`. La pregunta va delimitada y se trata como dato, no como instrucción.
 3. Si el modelo marca `sinProtocolo=true`, se respeta.
-4. `RespuestaValidator` invalida la respuesta si no cita fuentes, si alguna fuente no existe en el corpus ni entre los segmentos recuperados, si alguna cifra no aparece en las secciones citadas, o si la cobertura léxica respecto del contenido citado queda bajo 0.80 (`asistente.validacion.cobertura-minima`).
+4. `RespuestaValidator` invalida la respuesta si no cita fuentes, si alguna fuente no existe en el corpus ni entre los segmentos recuperados, si alguna cifra no aparece en las secciones citadas, o si la cobertura léxica respecto del contenido citado queda bajo 0.85 (`asistente.validacion.cobertura-minima`). Para esa cobertura no cuentan las palabras de la pregunta ni palabras meta como "según" o "figura"; con 0.80 una respuesta fiel con un fármaco añadido al final pasaba, y con 0.85 no. Además, toda mención `PROTO-n` del texto debe estar entre las fuentes citadas.
 5. Una respuesta inválida se reemplaza por el aviso estándar con `fuentes: []` y se cuenta en `asistente.respuestas{tipo=invalida}`.
 
 ## Alternativas consideradas

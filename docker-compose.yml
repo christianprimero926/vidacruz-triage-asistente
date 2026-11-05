@@ -136,6 +136,7 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      ASISTENTE_LLM_TIMEOUTSEGUNDOS: ${LLM_TIMEOUT_SEGUNDOS:-20}
       TRACING_ENABLED: ${TRACING_ENABLED:-true}
       OTEL_ENDPOINT: http://jaeger:4318/v1/traces
     ports:

@@ -189,7 +189,7 @@ Cuando un paciente supera su SLA sin pasar a consulta, el monitor lo escala y, e
 - Kafka, PostgreSQL y Redis corren dentro del clúster (y en compose) por costo. En producción serían servicios administrados.
 - `reactor-kafka` está descontinuado (Spring lo anunció en 2025). Se usa por su manejo de backpressure; la salida está en el [ADR 0002](docs/adr/0002-outbox-transaccional-y-kafka.md).
 - El modelo de embeddings (all-MiniLM-L6-v2) es sobre todo en inglés y separa mal las preguntas ajenas al corpus en español. Se compensa con la compuerta léxica del [ADR 0003](docs/adr/0003-rag-y-barreras-anti-alucinacion.md); no es una garantía matemática y el corpus es de solo tres protocolos.
-- Si Redis se vacía con el servicio corriendo, el conteo queda incompleto hasta reiniciar `asistente-service`: al arrancar, si falta la clave `urgencias:inicializado`, relee el topic desde el inicio y reconstruye.
+- Si Redis se vacía con el servicio corriendo, el conteo queda incompleto hasta reiniciar `asistente-service`: al arrancar, cada partición sin su marca `urgencias:inicializado:<particion>` se relee desde el inicio, y la marca solo se crea al alcanzar el final que había al asignarse. Si el servicio cae a mitad, al volver relee otra vez esa partición, lo que no cambia el resultado porque las operaciones son idempotentes.
 - El publicador del outbox lo ejecuta una sola réplica a la vez (advisory lock); más réplicas de triage dan disponibilidad, no más caudal de publicación.
 - Hay una sola API key por servicio, sin roles ni usuarios.
 
@@ -215,10 +215,10 @@ Aún no desplegado.
 
 - Probes: `/actuator/health/liveness` y `/actuator/health/readiness`, públicos. La readiness de triage incluye R2DBC; la de asistente no depende del LLM (el circuit breaker `llm` aparece en `/actuator/health` pero no la tumba).
 - Métricas en `/actuator/prometheus` (requiere API key):
-  - triage: `triage.clasificacion{nivel}`, `triage.escalamientos{nivel}`, `triage.alertas{resultado}`, `triage.outbox.pendientes` (gauge).
+  - triage: `triage.clasificacion{nivel}`, `triage.escalamientos{nivel}`, `triage.alertas{resultado}`, `triage.outbox.pendientes` (gauge), `triage.outbox.descartados`.
   - asistente: `asistente.respuestas{tipo=con_fuentes|sin_protocolo|invalida}`, `asistente.llm.latencia{resultado=ok|error|circuito_abierto}`, `asistente.eventos{tipo}`, más las del circuit breaker de Resilience4j.
 - Logs: legibles en local; JSON en formato ECS en el despliegue (`logging.structured.format.console=ecs`). Cada línea lleva `correlationId`. El `X-Correlation-Id` del cliente se acepta si cumple `^[A-Za-z0-9-]{8,64}$`; si no, se genera un UUID. Se devuelve en la respuesta y viaja en el evento (`correlationId` y cabecera `correlation-id`).
-- Trazas: OpenTelemetry por OTLP hacia Jaeger, activadas con `TRACING_ENABLED` (en compose vienen en `true`). El `traceparent` se guarda en el outbox y se pone como cabecera Kafka, de modo que el consumo en asistente queda en la misma traza. <!-- VERIFICAR: confirmar que los spans HTTP y el span del consumidor se ven encadenados en Jaeger -->
+- Trazas: OpenTelemetry por OTLP hacia Jaeger, activadas con `TRACING_ENABLED` (en compose vienen en `true`). El `traceparent` se guarda en el outbox y se pone como cabecera Kafka, de modo que el consumo en asistente queda en la misma traza.
 
 ## Seguridad
 
