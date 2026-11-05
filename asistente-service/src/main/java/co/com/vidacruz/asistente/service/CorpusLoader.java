@@ -5,11 +5,13 @@ import static co.com.vidacruz.asistente.utilities.Constants.MSG_CORPUS_VACIO;
 import static co.com.vidacruz.asistente.utilities.Constants.RUTA_CORPUS;
 
 import co.com.vidacruz.asistente.domain.Protocolo;
+import co.com.vidacruz.asistente.domain.SeccionProtocolo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -31,9 +33,16 @@ public class CorpusLoader {
     }
 
     public boolean existe(String protocolo, String seccion) {
+        return contenido(protocolo, seccion).isPresent();
+    }
+
+    public Optional<String> contenido(String protocolo, String seccion) {
         return protocolos.stream()
                 .filter(p -> p.id().equals(protocolo))
-                .anyMatch(p -> p.secciones().stream().anyMatch(s -> s.nombre().equals(seccion)));
+                .flatMap(p -> p.secciones().stream())
+                .filter(s -> s.nombre().equals(seccion))
+                .map(SeccionProtocolo::contenido)
+                .findFirst();
     }
 
     private static List<Protocolo> cargar(ObjectMapper objectMapper) {

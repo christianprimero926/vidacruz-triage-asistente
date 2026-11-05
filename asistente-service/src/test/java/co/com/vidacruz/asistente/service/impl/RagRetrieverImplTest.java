@@ -33,7 +33,7 @@ class RagRetrieverImplTest {
     }
 
     private static RagRetrieverImpl retriever(int topK, double scoreMinimo) {
-        return new RagRetrieverImpl(embeddingModel, embeddingStore, new RagProperties(topK, scoreMinimo));
+        return new RagRetrieverImpl(embeddingModel, embeddingStore, new RagProperties(topK, scoreMinimo, 0.80));
     }
 
     @Nested
