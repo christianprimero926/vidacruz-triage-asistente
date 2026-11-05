@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vidacruz
+spec:
+  # Complemento de enrutamiento de aplicaciones de AKS
+  ingressClassName: webapprouting.kubernetes.azure.com
+  rules:
+    - http:
+        paths:
+          - path: /triage
+            pathType: Prefix
+            backend:
+              service:
+                name: triage-service
+                port:
+                  number: 8080
+          - path: /asistente
+            pathType: Prefix
+            backend:
+              service:
+                name: asistente-service
+                port:
+                  number: 8080

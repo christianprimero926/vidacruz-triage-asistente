@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: vidacruz
+
+# Decisión de costo: PostgreSQL, Kafka y Redis corren como StatefulSets dentro del cluster.
+# En producción irían servicios administrados: Azure Database for PostgreSQL,
+# Event Hubs con API Kafka y Azure Cache for Redis.
+#
+# secret.example.yaml no se incluye: el secret real lo crea deploy.sh con kubectl.
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - postgres.yaml
+  - kafka.yaml
+  - redis.yaml
+  - kafka-topics-job.yaml
+  - webhook-echo.yaml
+  - triage.yaml
+  - asistente.yaml
+  - ingress.yaml
+
+# deploy.sh reemplaza REGISTRO_ACR y ETIQUETA en una copia temporal
+images:
+  - name: triage-service
+    newName: REGISTRO_ACR/triage-service
+    newTag: ETIQUETA
+  - name: asistente-service
+    newName: REGISTRO_ACR/asistente-service
+    newTag: ETIQUETA

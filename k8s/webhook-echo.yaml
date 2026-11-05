@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook-echo
+spec:
+  selector:
+    app: webhook-echo
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+# Receptor de demo: las alertas llegan a sus logs (kubectl logs deploy/webhook-echo)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-echo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webhook-echo
+  template:
+    metadata:
+      labels:
+        app: webhook-echo
+    spec:
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: webhook-echo
+          image: mendhak/http-https-echo:latest
+          env:
+            - name: HTTP_PORT
+              value: "8080"
+            - name: HTTPS_PORT
+              value: "8443"
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
