@@ -6,39 +6,50 @@ import static co.com.vidacruz.asistente.utilities.Constants.PREFIJO_CLAVE_ACTIVO
 import co.com.vidacruz.asistente.domain.NivelTriage;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 
 /** Vista de pacientes activos: un set de Redis por nivel, de modo que reaplicar un evento no cambia nada. */
 @Repository
-@RequiredArgsConstructor
 public class UrgenciasRepository {
 
     private final ReactiveStringRedisTemplate redis;
+    private final Scheduler redisScheduler;
+
+    public UrgenciasRepository(ReactiveStringRedisTemplate redis, @Qualifier("redisScheduler") Scheduler redisScheduler) {
+        this.redis = redis;
+        this.redisScheduler = redisScheduler;
+    }
 
     public Mono<Void> agregar(NivelTriage nivel, String pacienteId) {
-        return redis.opsForSet().add(clave(nivel), pacienteId).then();
+        return Mono.defer(() -> redis.opsForSet().add(clave(nivel), pacienteId).then())
+                .subscribeOn(redisScheduler);
     }
 
     public Mono<Void> quitar(NivelTriage nivel, String pacienteId) {
-        return redis.opsForSet().remove(clave(nivel), pacienteId).then();
+        return Mono.defer(() -> redis.opsForSet().remove(clave(nivel), pacienteId).then())
+                .subscribeOn(redisScheduler);
     }
 
     public Mono<Map<NivelTriage, Long>> contarPorNivel() {
         return Flux.fromArray(NivelTriage.values())
                 .concatMap(nivel -> redis.opsForSet().size(clave(nivel)).map(total -> Map.entry(nivel, total)))
-                .collect(LinkedHashMap::new, (mapa, entrada) -> mapa.put(entrada.getKey(), entrada.getValue()));
+                .<Map<NivelTriage, Long>>collect(LinkedHashMap::new,
+                        (mapa, entrada) -> mapa.put(entrada.getKey(), entrada.getValue()))
+                .subscribeOn(redisScheduler);
     }
 
     public Mono<Boolean> inicializado() {
-        return redis.hasKey(CLAVE_INICIALIZADO);
+        return Mono.defer(() -> redis.hasKey(CLAVE_INICIALIZADO)).subscribeOn(redisScheduler);
     }
 
     public Mono<Void> marcarInicializado() {
-        return redis.opsForValue().set(CLAVE_INICIALIZADO, "1").then();
+        return Mono.defer(() -> redis.opsForValue().set(CLAVE_INICIALIZADO, "1").then())
+                .subscribeOn(redisScheduler);
     }
 
     private static String clave(NivelTriage nivel) {

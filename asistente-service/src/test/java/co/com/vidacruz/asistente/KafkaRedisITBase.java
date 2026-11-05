@@ -67,12 +67,18 @@ abstract class KafkaRedisITBase {
     }
 
     static void publicar(String topic, String clave, String valor) {
+        publicar(topic, clave, valor, Map.of());
+    }
+
+    static void publicar(String topic, String clave, String valor, Map<String, String> cabeceras) {
         Properties config = new Properties();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         try (KafkaProducer<String, String> productor = new KafkaProducer<>(config)) {
-            productor.send(new ProducerRecord<>(topic, clave, valor)).get();
+            ProducerRecord<String, String> envio = new ProducerRecord<>(topic, clave, valor);
+            cabeceras.forEach((nombre, contenido) -> envio.headers().add(nombre, contenido.getBytes()));
+            productor.send(envio).get();
         } catch (InterruptedException | ExecutionException e) {
             throw new IllegalStateException(e);
         }

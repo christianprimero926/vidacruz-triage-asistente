@@ -13,6 +13,7 @@ import co.com.vidacruz.asistente.repository.UrgenciasRepository;
 import co.com.vidacruz.asistente.service.EventoParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.observation.ObservationRegistry;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -60,7 +61,7 @@ class UrgenciasEventConsumerTest {
         EventosKafkaProperties properties =
                 new EventosKafkaProperties("localhost:9092", "triaje.eventos", "triaje.eventos.dlt", "g", 100, true);
         consumer = new UrgenciasEventConsumer(receiver, sender, new EventoParser(new ObjectMapper()), repository,
-                reconstruccion, properties, meterRegistry);
+                reconstruccion, properties, meterRegistry, ObservationRegistry.NOOP);
     }
 
     private ReceiverRecord<String, String> registro(String valor) {

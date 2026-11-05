@@ -1,5 +1,6 @@
 package co.com.vidacruz.asistente.utilities;
 
+import java.util.List;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
 
@@ -57,6 +58,17 @@ public class Constants {
     public static final String TIPO_EVENTO_INVALIDO = "invalido";
     public static final String HEADER_MOTIVO_DLT = "motivo-dlt";
     public static final String HEADER_CORRELACION_KAFKA = "correlation-id";
+
+    public static final String HEADER_API_KEY = "X-API-Key";
+    public static final String COD_NO_AUTORIZADO = "NO_AUTORIZADO";
+    public static final String MSG_NO_AUTORIZADO = "La API key es obligatoria y debe ser válida";
+    public static final String CLAVE_CORRELACION = "correlationId";
+    public static final String PATRON_CORRELACION = "^[A-Za-z0-9-]{8,64}$";
+    public static final String HEADER_TRACEPARENT = "traceparent";
+    public static final String OBSERVACION_EVENTO = "urgencias.evento";
+    public static final String ESQUEMA_API_KEY = "ApiKeyAuth";
+    public static final List<String> RUTAS_PUBLICAS = List.of(
+            "/actuator/health/**", "/swagger-ui*", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**");
 
     public static final int LONGITUD_MINIMA_PALABRA = 4;
     public static final int LONGITUD_RAIZ = 6;
