@@ -110,8 +110,6 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       TRIAGE_API_KEY: ${TRIAGE_API_KEY:-triage-local-key}
       # Los probes de actuator solo se activan solos dentro de Kubernetes
-      MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
-      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus,metrics
       WEBHOOK_ALERTAS_URL: ${WEBHOOK_ALERTAS_URL:-http://webhook-echo:8080/alertas}
       TRACING_ENABLED: ${TRACING_ENABLED:-true}
       OTEL_ENDPOINT: http://jaeger:4318/v1/traces
