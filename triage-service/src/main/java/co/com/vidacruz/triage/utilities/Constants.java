@@ -72,6 +72,7 @@ public class Constants {
     public static final String CODIGO_METODO_NO_PERMITIDO = "METODO_NO_PERMITIDO";
     public static final String CODIGO_MEDIA_TYPE_NO_SOPORTADO = "MEDIA_TYPE_NO_SOPORTADO";
     public static final String CODIGO_ERROR_INTERNO = "ERROR_INTERNO";
+    public static final String CODIGO_BASE_DATOS_NO_DISPONIBLE = "BASE_DATOS_NO_DISPONIBLE";
 
     // Mensajes
     public static final String MSG_VALIDACION = "Hay campos inválidos: %s";
@@ -89,6 +90,9 @@ public class Constants {
     public static final String MSG_RECURSO_NO_ENCONTRADO = "El recurso solicitado no existe";
     public static final String MSG_METODO_NO_PERMITIDO = "El método HTTP no está permitido para este recurso";
     public static final String MSG_MEDIA_TYPE_NO_SOPORTADO = "El tipo de contenido no está soportado, use application/json";
+    public static final String MSG_BASE_DATOS_NO_DISPONIBLE =
+            "El servicio no puede atender la solicitud en este momento. Intente de nuevo en unos segundos";
+    public static final String SEGUNDOS_REINTENTO_BASE_DATOS = "5";
     public static final String MSG_ERROR_INTERNO = "Ocurrió un error inesperado. Intente de nuevo más tarde";
 
     // Quejas administrativas normalizadas (ver TextNormalizer): coincidencia exacta, no "contiene".
