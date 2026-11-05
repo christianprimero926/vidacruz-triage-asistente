@@ -6,6 +6,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import co.com.vidacruz.triage.config.TriageProperties;
+import co.com.vidacruz.triage.domain.NivelTriage;
+import co.com.vidacruz.triage.service.MetricasTriage;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import co.com.vidacruz.triage.repository.PacienteRepository;
 import co.com.vidacruz.triage.service.EscalamientoService;
 import java.time.Clock;
@@ -36,7 +39,8 @@ class SlaMonitorJobTest {
     private SlaMonitorJob job() {
         var properties = new TriageProperties();
         properties.getJobs().setSlaLote(7);
-        return new SlaMonitorJob(pacienteRepository, escalamientoService, properties, Clock.fixed(AHORA, ZoneOffset.UTC));
+        return new SlaMonitorJob(pacienteRepository, escalamientoService, properties, Clock.fixed(AHORA, ZoneOffset.UTC),
+                new MetricasTriage(new SimpleMeterRegistry()));
     }
 
     @Test
@@ -45,8 +49,8 @@ class SlaMonitorJobTest {
         UUID a = UUID.randomUUID();
         UUID b = UUID.randomUUID();
         when(pacienteRepository.findIdsConSlaVencido(AHORA, 7)).thenReturn(Flux.just(a, b));
-        when(escalamientoService.escalar(a)).thenReturn(Mono.just(true));
-        when(escalamientoService.escalar(b)).thenReturn(Mono.just(true));
+        when(escalamientoService.escalar(a)).thenReturn(Mono.just(NivelTriage.CRITICO));
+        when(escalamientoService.escalar(b)).thenReturn(Mono.just(NivelTriage.CRITICO));
 
         StepVerifier.create(job().ejecutar()).expectComplete().verify(Duration.ofSeconds(2));
 
@@ -61,7 +65,7 @@ class SlaMonitorJobTest {
         UUID sigue = UUID.randomUUID();
         when(pacienteRepository.findIdsConSlaVencido(any(Instant.class), anyInt())).thenReturn(Flux.just(falla, sigue));
         when(escalamientoService.escalar(falla)).thenReturn(Mono.error(new IllegalStateException("falla")));
-        when(escalamientoService.escalar(sigue)).thenReturn(Mono.just(true));
+        when(escalamientoService.escalar(sigue)).thenReturn(Mono.just(NivelTriage.CRITICO));
 
         StepVerifier.create(job().ejecutar()).expectComplete().verify(Duration.ofSeconds(2));
 

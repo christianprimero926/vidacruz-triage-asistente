@@ -74,7 +74,7 @@ class EscalamientoServiceImplTest {
     void shouldDoNothing_WhenPacienteIsNoLongerEscalable() {
         filasActualizadas(0);
 
-        StepVerifier.create(service.escalar(id)).expectNext(false).verifyComplete();
+        StepVerifier.create(service.escalar(id)).verifyComplete();
 
         verifyNoInteractions(pacienteRepository, auditoriaService, outboxService);
     }
@@ -92,7 +92,7 @@ class EscalamientoServiceImplTest {
                 .thenReturn(Mono.empty());
         when(template.insert(any(AlertaMedica.class))).thenAnswer(inv -> Mono.just(inv.getArgument(0)));
 
-        StepVerifier.create(service.escalar(id)).expectNext(true).expectComplete().verify(LIMITE);
+        StepVerifier.create(service.escalar(id)).expectNext(NivelTriage.URGENTE).expectComplete().verify(LIMITE);
 
         ArgumentCaptor<AuditoriaClinica> auditoria = ArgumentCaptor.forClass(AuditoriaClinica.class);
         verify(auditoriaService).registrar(auditoria.capture());

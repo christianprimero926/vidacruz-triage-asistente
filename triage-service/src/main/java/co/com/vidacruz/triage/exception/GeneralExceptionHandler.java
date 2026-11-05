@@ -6,7 +6,6 @@ import static co.com.vidacruz.triage.utilities.Constants.CODIGO_METODO_NO_PERMIT
 import static co.com.vidacruz.triage.utilities.Constants.CODIGO_RECURSO_NO_ENCONTRADO;
 import static co.com.vidacruz.triage.utilities.Constants.CODIGO_SOLICITUD_INVALIDA;
 import static co.com.vidacruz.triage.utilities.Constants.CODIGO_VALIDACION;
-import static co.com.vidacruz.triage.utilities.Constants.HEADER_CORRELATION_ID;
 import static co.com.vidacruz.triage.utilities.Constants.MSG_ERROR_INTERNO;
 import static co.com.vidacruz.triage.utilities.Constants.MSG_MEDIA_TYPE_NO_SOPORTADO;
 import static co.com.vidacruz.triage.utilities.Constants.MSG_METODO_NO_PERMITIDO;
@@ -17,7 +16,7 @@ import static co.com.vidacruz.triage.utilities.Constants.MSG_VALIDACION;
 import co.com.vidacruz.triage.dto.response.ErrorDetalleDTO;
 import co.com.vidacruz.triage.dto.response.ErrorResponseDTO;
 import co.com.vidacruz.triage.utilities.InputErrorUtils;
-import java.time.Clock;
+import co.com.vidacruz.triage.utilities.LogSanitizer;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +34,7 @@ import org.springframework.web.server.ServerWebInputException;
 @RequiredArgsConstructor
 public class GeneralExceptionHandler {
 
-    private final Clock clock;
+    private final ErrorResponseFactory errorFactory;
 
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ErrorResponseDTO> handleValidation(ValidationException ex, ServerWebExchange exchange) {
@@ -67,22 +66,15 @@ public class GeneralExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> handleUnexpected(Exception ex, ServerWebExchange exchange) {
-        log.error("Error no previsto en {} {}", exchange.getRequest().getMethod(), exchange.getRequest().getPath(), ex);
+        log.error("Error no previsto en {} {}", exchange.getRequest().getMethod(),
+                LogSanitizer.sanear(exchange.getRequest().getPath().value()), ex);
         return responder(HttpStatus.INTERNAL_SERVER_ERROR, CODIGO_ERROR_INTERNO, MSG_ERROR_INTERNO, null, exchange);
     }
 
     private ResponseEntity<ErrorResponseDTO> responder(HttpStatusCode status, String codigo, String mensaje,
                                                        List<ErrorDetalleDTO> errores, ServerWebExchange exchange) {
-        ErrorResponseDTO cuerpo = ErrorResponseDTO.builder()
-                .timestamp(clock.instant())
-                .status(status.value())
-                .codigo(codigo)
-                .mensaje(mensaje)
-                .path(exchange.getRequest().getPath().value())
-                .correlationId(exchange.getResponse().getHeaders().getFirst(HEADER_CORRELATION_ID))
-                .errores(errores)
-                .build();
-        return ResponseEntity.status(status).body(cuerpo);
+        return ResponseEntity.status(status)
+                .body(errorFactory.crear(status, codigo, mensaje, errores, exchange));
     }
 
     private static String codigoPara(HttpStatusCode status) {

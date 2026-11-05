@@ -6,6 +6,7 @@ import co.com.vidacruz.triage.domain.TipoEvento;
 import co.com.vidacruz.triage.event.EventoPacienteDTO;
 import co.com.vidacruz.triage.repository.OutboxRepository;
 import co.com.vidacruz.triage.service.OutboxService;
+import co.com.vidacruz.triage.utilities.CorrelationContext;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.util.context.ContextView;
 
 @Slf4j
 @Service
@@ -25,13 +27,15 @@ public class OutboxServiceImpl implements OutboxService {
 
     @Override
     public Mono<Void> registrar(Paciente paciente, TipoEvento tipo, Instant ocurridoEn) {
-        return Mono.fromCallable(() -> construirEvento(paciente, tipo, ocurridoEn))
+        return Mono.deferContextual(contexto -> Mono.fromCallable(
+                        () -> construirEvento(paciente, tipo, ocurridoEn, contexto)))
                 .flatMap(outboxRepository::guardar)
                 .then();
     }
 
-    private OutboxEvento construirEvento(Paciente paciente, TipoEvento tipo, Instant ocurridoEn)
-            throws JsonProcessingException {
+    private OutboxEvento construirEvento(Paciente paciente, TipoEvento tipo, Instant ocurridoEn,
+                                        ContextView contexto) throws JsonProcessingException {
+        String correlationId = CorrelationContext.correlationId(contexto).orElse(null);
         UUID eventoId = UUID.randomUUID();
         EventoPacienteDTO evento = EventoPacienteDTO.builder()
                 .eventoId(eventoId)
@@ -43,12 +47,15 @@ public class OutboxServiceImpl implements OutboxService {
                 .escalado(paciente.isEscalado())
                 .slaMinutos(paciente.getSlaMinutos())
                 .ocurridoEn(ocurridoEn)
+                .correlationId(correlationId)
                 .build();
         return OutboxEvento.builder()
                 .id(eventoId)
                 .pacienteId(paciente.getId())
                 .tipoEvento(tipo.getNombre())
                 .payload(objectMapper.writeValueAsString(evento))
+                .correlationId(correlationId)
+                .traceparent(CorrelationContext.traceparent(contexto).orElse(null))
                 .fechaCreacion(ocurridoEn)
                 .build();
     }

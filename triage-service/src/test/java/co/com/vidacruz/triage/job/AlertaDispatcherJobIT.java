@@ -8,6 +8,7 @@ import co.com.vidacruz.triage.support.PacienteFixtures;
 import co.com.vidacruz.triage.support.TestClockConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
@@ -49,6 +50,13 @@ class AlertaDispatcherJobIT extends AbstractIT {
     private SlaMonitorJob monitor;
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private MeterRegistry registry;
+
+    private double alertas(String resultado) {
+        var contador = registry.find("triage.alertas").tag("resultado", resultado).counter();
+        return contador == null ? 0 : contador.count();
+    }
 
     @BeforeEach
     void reiniciarWebhook() {
@@ -71,6 +79,7 @@ class AlertaDispatcherJobIT extends AbstractIT {
     @Test
     @DisplayName("envía al webhook el cuerpo esperado, sin nombre ni queja, y queda ENVIADA")
     void shouldSendExpectedBodyAndMarkSent_WhenWebhookAnswersOk() throws Exception {
+        double enviadasAntes = alertas("enviada");
         UUID id = pacienteEscalado();
 
         dispatcher.ejecutar().block(ESPERA);
@@ -90,6 +99,7 @@ class AlertaDispatcherJobIT extends AbstractIT {
         assertThat(cuerpo).doesNotContain("Paciente de Prueba").doesNotContain("Dolor tor");
 
         assertThat(campo("estado", id)).isEqualTo("ENVIADA");
+        assertThat(alertas("enviada")).isEqualTo(enviadasAntes + 1);
         assertThat(campo("intentos", id)).isEqualTo("1");
         assertThat(campo("to_char(fecha_envio AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS')", id)).isEqualTo("2026-11-05 15:05:00");
     }
@@ -97,6 +107,7 @@ class AlertaDispatcherJobIT extends AbstractIT {
     @Test
     @DisplayName("ante un 500 la alerta sigue pendiente con espera exponencial y luego se envía")
     void shouldRetryAfterBackoff_WhenWebhookFailsOnce() {
+        double reintentosAntes = alertas("reintento");
         UUID id = pacienteEscalado();
         WEBHOOK.responder(500, 0);
 
@@ -106,6 +117,7 @@ class AlertaDispatcherJobIT extends AbstractIT {
         assertThat(campo("intentos", id)).isEqualTo("1");
         assertThat(campo("ultimo_error", id)).isEqualTo("HTTP 500");
         assertThat(campo(UTC_PROXIMO, id)).isEqualTo("2026-11-05 15:05:01");
+        assertThat(alertas("reintento")).isEqualTo(reintentosAntes + 1);
 
         WEBHOOK.responder(200, 0);
         dispatcher.ejecutar().block(ESPERA);
@@ -123,6 +135,7 @@ class AlertaDispatcherJobIT extends AbstractIT {
     @Test
     @DisplayName("con 500 permanente pasa a FALLIDA al agotar los intentos y ya no se vuelve a enviar")
     void shouldFailAfterMaxAttempts_WhenWebhookAlwaysFails() {
+        double fallidasAntes = alertas("fallida");
         UUID id = pacienteEscalado();
         WEBHOOK.responder(500, 0);
 
@@ -134,6 +147,7 @@ class AlertaDispatcherJobIT extends AbstractIT {
         dispatcher.ejecutar().block(ESPERA);
 
         assertThat(campo("estado", id)).isEqualTo("FALLIDA");
+        assertThat(alertas("fallida")).isEqualTo(fallidasAntes + 1);
         assertThat(campo("intentos", id)).isEqualTo("3");
         assertThat(campo("ultimo_error", id)).isEqualTo("HTTP 500");
         assertThat(WEBHOOK.cuerpos()).hasSize(3);

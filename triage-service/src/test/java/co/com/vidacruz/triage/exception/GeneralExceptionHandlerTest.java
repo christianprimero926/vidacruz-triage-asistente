@@ -16,7 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 class GeneralExceptionHandlerTest {
 
     private final GeneralExceptionHandler handler = new GeneralExceptionHandler(
-            Clock.fixed(Instant.parse("2026-11-05T15:00:00Z"), ZoneOffset.UTC));
+            new ErrorResponseFactory(Clock.fixed(Instant.parse("2026-11-05T15:00:00Z"), ZoneOffset.UTC)));
     private final MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/x"));
 
     @Test

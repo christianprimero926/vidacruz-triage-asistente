@@ -4,6 +4,7 @@ import co.com.vidacruz.triage.domain.AlertaMedica;
 import co.com.vidacruz.triage.domain.AuditoriaClinica;
 import co.com.vidacruz.triage.domain.EstadoAlerta;
 import co.com.vidacruz.triage.domain.EstadoPaciente;
+import co.com.vidacruz.triage.domain.NivelTriage;
 import co.com.vidacruz.triage.domain.Paciente;
 import co.com.vidacruz.triage.domain.TipoEvento;
 import co.com.vidacruz.triage.repository.PacienteRepository;
@@ -40,19 +41,14 @@ public class EscalamientoServiceImpl implements EscalamientoService {
     /** Marca, auditoría, evento y alerta se confirman juntos; con 0 filas no se hace nada más. */
     @Override
     @Transactional
-    public Mono<Boolean> escalar(UUID pacienteId) {
+    public Mono<NivelTriage> escalar(UUID pacienteId) {
         Instant ahora = clock.instant();
         return marcarEscalado(pacienteId, ahora)
                 .filter(filas -> filas > 0)
                 .flatMap(filas -> pacienteRepository.findById(pacienteId))
                 .flatMap(paciente -> registrarEfectos(paciente, ahora))
-                .map(paciente -> true)
-                .defaultIfEmpty(false)
-                .doOnNext(escalado -> {
-                    if (escalado) {
-                        log.info("Paciente id={} escalado por superar su SLA", pacienteId);
-                    }
-                });
+                .map(Paciente::getNivel)
+                .doOnNext(nivel -> log.info("Paciente id={} escalado por superar su SLA", pacienteId));
     }
 
     /** El UPDATE condicional es la barrera de RN-03: solo una llamada, aunque sean concurrentes, afecta la fila. */

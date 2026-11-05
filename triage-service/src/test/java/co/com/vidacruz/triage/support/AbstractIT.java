@@ -10,6 +10,7 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -24,7 +25,8 @@ import org.testcontainers.kafka.KafkaContainer;
 /** Contexto completo contra PostgreSQL y Kafka reales, compartidos por todas las pruebas de integración. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@Import(TestClockConfig.class)
+@AutoConfigureObservability
+@Import({TestClockConfig.class, TestWebClientConfig.class})
 public abstract class AbstractIT {
 
     protected static final String TOPIC = "triaje.eventos";

@@ -2,6 +2,7 @@ package co.com.vidacruz.triage.job;
 
 import static co.com.vidacruz.triage.utilities.Constants.HEADER_CORRELATION_KAFKA;
 import static co.com.vidacruz.triage.utilities.Constants.HEADER_TIPO_EVENTO;
+import static co.com.vidacruz.triage.utilities.Constants.METRICA_OUTBOX_PENDIENTES;
 import static co.com.vidacruz.triage.utilities.Constants.HEADER_TRACEPARENT;
 
 import co.com.vidacruz.triage.config.TriageKafkaProperties;
@@ -53,7 +54,7 @@ public class OutboxPublisherJob extends PeriodicJob {
         this.kafkaProperties = kafkaProperties;
         this.clock = clock;
         this.lote = properties.getJobs().getOutboxLote();
-        meterRegistry.gauge("triage.outbox.pendientes", pendientes);
+        meterRegistry.gauge(METRICA_OUTBOX_PENDIENTES, pendientes);
     }
 
     @Override

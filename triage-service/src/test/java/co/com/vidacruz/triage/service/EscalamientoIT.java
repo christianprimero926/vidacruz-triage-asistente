@@ -2,6 +2,7 @@ package co.com.vidacruz.triage.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import co.com.vidacruz.triage.domain.NivelTriage;
 import co.com.vidacruz.triage.job.SlaMonitorJob;
 import co.com.vidacruz.triage.support.AbstractIT;
 import co.com.vidacruz.triage.support.PacienteFixtures;
@@ -141,8 +142,8 @@ class EscalamientoIT extends AbstractIT {
             UUID id = crearPaciente(PacienteFixtures.e1());
             clock.avanzar(Duration.ofMinutes(6));
 
-            assertThat(escalamientoService.escalar(id).block(ESPERA)).isTrue();
-            assertThat(escalamientoService.escalar(id).block(ESPERA)).isFalse();
+            assertThat(escalamientoService.escalar(id).block(ESPERA)).isEqualTo(NivelTriage.CRITICO);
+            assertThat(escalamientoService.escalar(id).block(ESPERA)).isNull();
 
             verificarUnSoloEscalamiento(id);
         }
@@ -153,11 +154,11 @@ class EscalamientoIT extends AbstractIT {
             UUID id = crearPaciente(PacienteFixtures.e1());
             clock.avanzar(Duration.ofMinutes(6));
 
-            List<Boolean> resultados = Flux.range(0, 8)
+            List<NivelTriage> resultados = Flux.range(0, 8)
                     .flatMap(i -> escalamientoService.escalar(id).subscribeOn(Schedulers.parallel()))
                     .collectList().block(ESPERA);
 
-            assertThat(resultados).filteredOn(Boolean::booleanValue).hasSize(1);
+            assertThat(resultados).containsExactly(NivelTriage.CRITICO);
             verificarUnSoloEscalamiento(id);
         }
 
@@ -172,8 +173,8 @@ class EscalamientoIT extends AbstractIT {
 
             job.ejecutar().block(ESPERA);
 
-            assertThat(escalamientoService.escalar(enConsulta).block(ESPERA)).isFalse();
-            assertThat(escalamientoService.escalar(dadoDeAlta).block(ESPERA)).isFalse();
+            assertThat(escalamientoService.escalar(enConsulta).block(ESPERA)).isNull();
+            assertThat(escalamientoService.escalar(dadoDeAlta).block(ESPERA)).isNull();
             assertThat(contar("paciente WHERE escalado")).isZero();
             assertThat(contar("alerta_medica")).isZero();
             assertThat(contar("outbox_evento WHERE tipo_evento = 'paciente_escalado'")).isZero();

@@ -1,6 +1,9 @@
 package co.com.vidacruz.triage.job;
 
+import static co.com.vidacruz.triage.utilities.Constants.CORRELATION_ID_KEY;
+
 import java.time.Duration;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.SmartLifecycle;
 import reactor.core.Disposable;
@@ -35,7 +38,9 @@ public abstract class PeriodicJob implements SmartLifecycle {
         }
         suscripcion = Flux.interval(periodo)
                 .onBackpressureDrop()
-                .concatMap(tick -> Mono.defer(this::ejecutar).onErrorResume(this::registrarFallo), 1)
+                .concatMap(tick -> Mono.defer(this::ejecutar)
+                        .contextWrite(contexto -> contexto.put(CORRELATION_ID_KEY, UUID.randomUUID().toString()))
+                        .onErrorResume(this::registrarFallo), 1)
                 .subscribe();
         log.info("Job {} iniciado cada {} ms", nombre, periodo.toMillis());
     }

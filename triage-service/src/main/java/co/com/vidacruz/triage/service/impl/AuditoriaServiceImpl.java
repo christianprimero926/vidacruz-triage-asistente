@@ -7,6 +7,7 @@ import co.com.vidacruz.triage.mapper.AuditoriaMapper;
 import co.com.vidacruz.triage.repository.AuditoriaRepository;
 import co.com.vidacruz.triage.repository.PacienteRepository;
 import co.com.vidacruz.triage.service.AuditoriaService;
+import co.com.vidacruz.triage.utilities.CorrelationContext;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +26,12 @@ public class AuditoriaServiceImpl implements AuditoriaService {
 
     @Override
     public Mono<Void> registrar(AuditoriaClinica entrada) {
-        return auditoriaRepository.save(entrada).then();
+        return Mono.deferContextual(contexto -> {
+            if (entrada.getCorrelationId() == null) {
+                CorrelationContext.correlationId(contexto).ifPresent(entrada::setCorrelationId);
+            }
+            return auditoriaRepository.save(entrada).then();
+        });
     }
 
     @Override

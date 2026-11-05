@@ -79,7 +79,8 @@ class OutboxPublisherJobIT extends AbstractIT {
             assertThat(registro.key()).isEqualTo(id.toString());
             assertThat(new String(registro.headers().lastHeader("tipo-evento").value(), StandardCharsets.UTF_8))
                     .isEqualTo("paciente_registrado");
-            assertThat(registro.headers().lastHeader("correlation-id")).isNull();
+            assertThat(new String(registro.headers().lastHeader("correlation-id").value(), StandardCharsets.UTF_8))
+                    .matches("[0-9a-f-]{36}");
             assertThat(evento.get("eventoId").asText()).isNotBlank();
             assertThat(evento.get("tipo").asText()).isEqualTo("paciente_registrado");
             assertThat(evento.get("version").asInt()).isEqualTo(1);

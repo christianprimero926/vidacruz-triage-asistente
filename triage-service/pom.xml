@@ -42,6 +42,18 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.projectreactor.kafka</groupId>
             <artifactId>reactor-kafka</artifactId>
         </dependency>
@@ -91,6 +103,12 @@
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor.tools</groupId>
+            <artifactId>blockhound</artifactId>
+            <version>1.0.18.RELEASE</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -155,12 +173,32 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <argLine>@{argLine} -XX:+AllowRedefinitionToAddDeleteMethods</argLine>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
                             <goal>integration-test</goal>
                             <goal>verify</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/BlockHoundIT.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                    <!-- BlockHound se instala para toda la JVM: va en su propio proceso para no afectar a las demás pruebas -->
+                    <execution>
+                        <id>blockhound-it</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                        <configuration>
+                            <includes>
+                                <include>**/BlockHoundIT.java</include>
+                            </includes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

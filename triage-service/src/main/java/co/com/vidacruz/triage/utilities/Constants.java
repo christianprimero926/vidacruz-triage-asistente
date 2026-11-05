@@ -1,5 +1,6 @@
 package co.com.vidacruz.triage.utilities;
 
+import java.util.List;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
 
@@ -43,8 +44,24 @@ public class Constants {
     public static final String HEADER_CORRELATION_KAFKA = "correlation-id";
     public static final String HEADER_TRACEPARENT = "traceparent";
 
-    // Cabeceras
+    // Cabeceras, seguridad y correlación
     public static final String HEADER_CORRELATION_ID = "X-Correlation-Id";
+    public static final String HEADER_API_KEY = "X-API-Key";
+    public static final String CORRELATION_ID_KEY = "correlationId";
+    public static final String ESQUEMA_API_KEY = "ApiKeyAuth";
+    public static final String PATRON_CORRELATION_ID = "^[A-Za-z0-9-]{8,64}$";
+    public static final String CODIGO_NO_AUTORIZADO = "NO_AUTORIZADO";
+    public static final String MSG_NO_AUTORIZADO = "API key ausente o inválida";
+    public static final List<String> RUTAS_PUBLICAS = List.of(
+            "/actuator/health/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**");
+
+    // Métricas
+    public static final String METRICA_CLASIFICACION = "triage.clasificacion";
+    public static final String METRICA_ESCALAMIENTOS = "triage.escalamientos";
+    public static final String METRICA_ALERTAS = "triage.alertas";
+    public static final String METRICA_OUTBOX_PENDIENTES = "triage.outbox.pendientes";
+    public static final String TAG_NIVEL = "nivel";
+    public static final String TAG_RESULTADO = "resultado";
 
     // Códigos de error
     public static final String CODIGO_VALIDACION = "VALIDACION_FALLIDA";

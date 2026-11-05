@@ -33,5 +33,7 @@ class SlaMonitorAutomaticoIT extends AbstractIT {
         await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
                 assertThat(contar("paciente WHERE escalado AND id = '" + id + "'")).isEqualTo(1));
         assertThat(contar("alerta_medica")).isEqualTo(1);
+        assertThat(databaseClient.sql("SELECT correlation_id FROM auditoria_clinica WHERE tipo_evento = 'paciente_escalado'")
+                .map(fila -> fila.get(0, String.class)).one().block()).matches("[0-9a-f-]{36}");
     }
 }
