@@ -51,5 +51,9 @@ public class TriageProperties {
         private long outboxIntervaloMs = 500;
         @Min(1)
         private int outboxLote = 100;
+        @Min(1)
+        private long slaIntervaloMs = 15000;
+        @Min(1)
+        private int slaLote = 100;
     }
 }
