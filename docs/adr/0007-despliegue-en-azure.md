@@ -10,8 +10,8 @@ El enunciado pide manifiestos de Kubernetes y despliegue en Azure, con costo mí
 
 - **AKS con un nodo** (`Standard_B2ms` por defecto, parámetro `nodeVmSize`) y **ACR** para las imágenes, definidos en `infra/azure/main.bicep`. El ACR se enlaza al clúster con el rol AcrPull.
 - **Manifiestos** en `k8s/` con kustomize: namespace, configmap, secret (lo crea el script, no está versionado), deployments de los servicios, StatefulSets de PostgreSQL, Kafka (KRaft, un solo broker) y Redis con volumen, un job que crea los topics y el receptor de webhooks de demo.
-- **Ingress** con el complemento de enrutamiento de aplicaciones de AKS (nginx administrado): `/triage` y `/asistente` hacia cada servicio.
-- **Scripts:** `infra/azure/deploy.sh` crea el grupo de recursos, ACR y AKS, construye las imágenes con `az acr build`, crea el secret, aplica los manifiestos, espera los rollouts e imprime las URLs. `destroy.sh` borra el grupo de recursos completo, con confirmación.
+- **Ingress** con el complemento de enrutamiento de aplicaciones de AKS (nginx administrado): `/triage` y `/asistente` hacia cada servicio. Swagger se publica bajo esos prefijos con variables en los Deployments; compose lo mantiene en la raíz.
+- **Scripts:** `infra/azure/deploy.sh` crea el grupo de recursos, ACR y AKS, construye las imágenes con `az acr build`, crea el secret, toma del entorno la URL y el modelo del LLM si se indican, aplica los manifiestos, espera los rollouts e imprime las URLs. `destroy.sh` borra el grupo de recursos completo, con confirmación.
 - **Datos en el clúster por costo.** PostgreSQL, Kafka y Redis administrados multiplican el costo mensual de una demo.
 
 ## Alternativas consideradas

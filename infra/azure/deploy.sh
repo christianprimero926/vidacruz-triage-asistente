@@ -2,13 +2,13 @@
 # Despliega VidaCruz en Azure: infraestructura, imágenes y manifiestos.
 # Requiere az (con sesión iniciada) y kubectl. Variables obligatorias de entorno:
 #   DB_PASSWORD, TRIAGE_API_KEY, ASISTENTE_API_KEY
-# Opcionales: LLM_API_KEY, WEBHOOK_ALERTAS_URL
+# Opcionales: LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, WEBHOOK_ALERTAS_URL
 set -euo pipefail
 
 RESOURCE_GROUP="${RESOURCE_GROUP:-rg-vidacruz}"
 LOCATION="${LOCATION:-eastus}"
 # Nombre estable entre ejecuciones y único por suscripción
-ACR_NAME="${ACR_NAME:-vidacruz$(az account show --query id --output tsv | tr -d '-' | cut -c1-8)}"
+ACR_NAME="${ACR_NAME:-vidacruz$(az account show --query id --output tsv | tr -d '\r-' | cut -c1-8)}"
 AKS_NAME="${AKS_NAME:-vidacruz-aks}"
 NAMESPACE="${NAMESPACE:-vidacruz}"
 SECUENCIA="${SECUENCIA:-01}"
@@ -18,6 +18,8 @@ TAG="${TAG:-$(date +%Y%m%d)${SECUENCIA}}"
 : "${TRIAGE_API_KEY:?Falta TRIAGE_API_KEY}"
 : "${ASISTENTE_API_KEY:?Falta ASISTENTE_API_KEY}"
 LLM_API_KEY="${LLM_API_KEY:-}"
+LLM_BASE_URL="${LLM_BASE_URL:-}"
+LLM_MODEL="${LLM_MODEL:-}"
 WEBHOOK_ALERTAS_URL="${WEBHOOK_ALERTAS_URL:-http://webhook-echo:8080/alertas}"
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -32,7 +34,8 @@ az deployment group create \
   --parameters acrName="$ACR_NAME" aksName="$AKS_NAME" \
   --output none
 
-ACR_SERVER="$(az acr show --name "$ACR_NAME" --query loginServer --output tsv)"
+# En Windows, az puede terminar la salida con \r
+ACR_SERVER="$(az acr show --name "$ACR_NAME" --query loginServer --output tsv | tr -d '\r')"
 
 for servicio in triage-service asistente-service; do
   echo "Construyendo $servicio:$TAG en el ACR"
@@ -57,6 +60,8 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 cp -r "$RAIZ/k8s/." "$TMP/"
 sed -i "s|REGISTRO_ACR|$ACR_SERVER|g; s|ETIQUETA|$TAG|g" "$TMP/kustomization.yaml"
+[ -z "$LLM_BASE_URL" ] || sed -i "s|^\( *LLM_BASE_URL:\).*|\1 $LLM_BASE_URL|" "$TMP/configmap.yaml"
+[ -z "$LLM_MODEL" ] || sed -i "s|^\( *LLM_MODEL:\).*|\1 $LLM_MODEL|" "$TMP/configmap.yaml"
 kubectl apply -k "$TMP"
 
 for recurso in statefulset/postgres statefulset/kafka statefulset/redis \
@@ -68,7 +73,7 @@ echo "Esperando la IP pública del ingress"
 IP=""
 for _ in $(seq 1 60); do
   IP="$(kubectl get ingress vidacruz --namespace "$NAMESPACE" \
-        -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+        -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null | tr -d '\r' || true)"
   [ -n "$IP" ] && break
   sleep 10
 done

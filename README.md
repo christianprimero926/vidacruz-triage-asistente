@@ -198,13 +198,13 @@ Cuando un paciente supera su SLA sin pasar a consulta, el monitor lo escala y, e
 `infra/azure/main.bicep` crea el ACR y un AKS de un nodo con app routing; `k8s/` tiene los manifiestos (kustomize).
 
 ```bash
-export DB_PASSWORD=... TRIAGE_API_KEY=... ASISTENTE_API_KEY=...   # opcional: LLM_API_KEY, WEBHOOK_ALERTAS_URL
+export DB_PASSWORD=... TRIAGE_API_KEY=... ASISTENTE_API_KEY=...   # opcional: LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, WEBHOOK_ALERTAS_URL
 az login
 ./infra/azure/deploy.sh      # grupo de recursos, ACR, AKS, build de imágenes, secret y manifiestos
 ./infra/azure/destroy.sh     # borra el grupo de recursos
 ```
 
-`deploy.sh` imprime al final las URLs del ingress. Detalle y alternativas en el [ADR 0007](docs/adr/0007-despliegue-en-azure.md).
+`deploy.sh` imprime al final las URLs de Swagger detrás del ingress (`/triage/swagger-ui.html` y `/asistente/swagger-ui.html`). Detalle y alternativas en el [ADR 0007](docs/adr/0007-despliegue-en-azure.md).
 
 ### URL pública
 
