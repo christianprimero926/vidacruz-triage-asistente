@@ -77,14 +77,15 @@ class ApiKeyWebFilterTest {
     @ParameterizedTest(name = "{0} es pública")
     @ValueSource(strings = {"/actuator/health", "/actuator/health/readiness", "/actuator/health/liveness",
             "/swagger-ui.html", "/swagger-ui/index.html", "/v3/api-docs", "/v3/api-docs/swagger-config",
-            "/webjars/swagger-ui/index.css"})
+            "/webjars/swagger-ui/index.css", "/triage/swagger-ui.html", "/triage/v3/api-docs",
+            "/triage/v3/api-docs/swagger-config", "/triage/swagger-ui/index.html"})
     void shouldContinueWithoutKey_WhenPathIsPublic(String ruta) {
         assertThat(pasa(peticion(ruta, null))).isTrue();
     }
 
     @ParameterizedTest(name = "{0} exige clave")
     @ValueSource(strings = {"/actuator/prometheus", "/actuator/metrics", "/actuator/info", "/triage/alertas",
-            "/actuator/healthz", "/swagger-ui-falso"})
+            "/actuator/healthz", "/swagger-ui-falso", "/triage/swagger-ui-falso", "/triage/pacientes"})
     void shouldRequireKey_WhenPathIsNotPublic(String ruta) {
         assertThat(pasa(peticion(ruta, null))).isFalse();
     }

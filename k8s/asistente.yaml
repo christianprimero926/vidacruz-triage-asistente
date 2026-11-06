@@ -48,6 +48,12 @@ spec:
           image: asistente-service
           ports:
             - containerPort: 8080
+          env:
+            # El ingress solo enruta /asistente: Swagger se publica bajo ese prefijo
+            - name: SPRINGDOC_SWAGGERUI_PATH
+              value: /asistente/swagger-ui.html
+            - name: SPRINGDOC_APIDOCS_PATH
+              value: /asistente/v3/api-docs
           envFrom:
             - configMapRef:
                 name: vidacruz-config

@@ -87,6 +87,18 @@ class SeguridadYObservabilidadIT {
                     .jsonPath("$.paths['/asistente/estado-urgencias']").exists();
             sinApiKey().get().uri("/swagger-ui/index.html").exchange().expectStatus().isOk();
         }
+
+        @Test
+        void shouldNotAskForKey_WhenSwaggerIsRequestedUnderTheIngressPrefix() {
+            sinApiKey().get().uri("/asistente/swagger-ui.html").exchange().expectStatus().isNotFound();
+            sinApiKey().get().uri("/asistente/v3/api-docs").exchange().expectStatus().isNotFound();
+            sinApiKey().get().uri("/asistente/swagger-ui/index.html").exchange().expectStatus().isNotFound();
+        }
+
+        @Test
+        void shouldAskForKey_WhenPathOnlyLooksLikeSwaggerUnderTheIngressPrefix() {
+            sinApiKey().get().uri("/asistente/swagger-ui-falso").exchange().expectStatus().isUnauthorized();
+        }
     }
 
     @Nested

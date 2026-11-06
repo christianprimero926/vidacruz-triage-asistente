@@ -71,7 +71,9 @@ public class Constants {
     public static final String OBSERVACION_EVENTO = "urgencias.evento";
     public static final String ESQUEMA_API_KEY = "ApiKeyAuth";
     public static final List<String> RUTAS_PUBLICAS = List.of(
-            "/actuator/health/**", "/swagger-ui*", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**");
+            "/actuator/health/**", "/swagger-ui*", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**",
+            // Swagger detrás del ingress de Kubernetes, que solo enruta /asistente
+            "/asistente/swagger-ui.html", "/asistente/swagger-ui/**", "/asistente/v3/api-docs/**");
 
     public static final int LONGITUD_MINIMA_PALABRA = 4;
     public static final int LONGITUD_RAIZ = 6;

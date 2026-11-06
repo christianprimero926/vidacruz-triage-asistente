@@ -62,6 +62,12 @@ spec:
           image: triage-service
           ports:
             - containerPort: 8080
+          env:
+            # El ingress solo enruta /triage: Swagger se publica bajo ese prefijo
+            - name: SPRINGDOC_SWAGGERUI_PATH
+              value: /triage/swagger-ui.html
+            - name: SPRINGDOC_APIDOCS_PATH
+              value: /triage/v3/api-docs
           envFrom:
             - configMapRef:
                 name: vidacruz-config

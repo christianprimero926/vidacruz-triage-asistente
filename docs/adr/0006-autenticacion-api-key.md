@@ -12,7 +12,7 @@ Cada servicio exige la cabecera `X-API-Key` mediante un `WebFilter` (`ApiKeyWebF
 
 - La comparación usa `MessageDigest.isEqual` (tiempo constante) para no filtrar la clave por temporización.
 - Fail-closed: la propiedad es obligatoria y está validada; si falta, la aplicación no arranca. En el código no hay valor por defecto.
-- Rutas públicas: `/actuator/health/**`, Swagger UI, `/v3/api-docs/**` y `/webjars/**`. Todo lo demás, incluido `/actuator/prometheus`, exige clave.
+- Rutas públicas: `/actuator/health/**`, Swagger UI, `/v3/api-docs/**` y `/webjars/**`, además de Swagger UI y OpenAPI bajo el prefijo de cada servicio, que es donde se publican detrás del ingress. Todo lo demás, incluido `/actuator/prometheus`, exige clave.
 - El 401 usa el mismo formato de error del resto de la API. El filtro de correlación corre antes, así que el 401 también lleva `correlationId`.
 - OpenAPI declara el esquema de seguridad para poder probar desde Swagger.
 - Las claves llegan por variable de entorno (compose) o por un secret de Kubernetes (Azure). El `.env.example` solo trae valores para local.

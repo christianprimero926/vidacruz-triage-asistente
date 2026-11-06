@@ -53,7 +53,9 @@ public class Constants {
     public static final String CODIGO_NO_AUTORIZADO = "NO_AUTORIZADO";
     public static final String MSG_NO_AUTORIZADO = "API key ausente o inválida";
     public static final List<String> RUTAS_PUBLICAS = List.of(
-            "/actuator/health/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**");
+            "/actuator/health/**", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**",
+            // Swagger detrás del ingress de Kubernetes, que solo enruta /triage
+            "/triage/swagger-ui.html", "/triage/swagger-ui/**", "/triage/v3/api-docs/**");
 
     // Métricas
     public static final String METRICA_CLASIFICACION = "triage.clasificacion";
