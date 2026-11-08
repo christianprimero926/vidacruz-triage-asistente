@@ -130,6 +130,21 @@ class ConsultaServiceImplTest {
         }
 
         @Test
+        void shouldValidateAndReturnCanonicalSection_WhenModelCitesItWithProtocolTitle() {
+            RespuestaLlm llm = new RespuestaLlm("Reconfirmar la presión tras 5 minutos.",
+                    List.of(new FuenteCitada("PROTO-001", "Crisis Hipertensiva, manejo inicial — Medidas iniciales")),
+                    false);
+            RespuestaLlm canonica = new RespuestaLlm(llm.respuesta(), List.of(FUENTE), false);
+            when(llmGateway.consultar(PREGUNTA, SEGMENTOS)).thenReturn(Mono.just(llm));
+            when(respuestaValidator.esValida(PREGUNTA, canonica, SEGMENTOS)).thenReturn(true);
+
+            StepVerifier.create(service.consultar(pregunta()))
+                    .assertNext(respuesta -> assertThat(respuesta.getFuentes())
+                            .containsExactly(new FuenteDTO("PROTO-001", "Medidas iniciales")))
+                    .verifyComplete();
+        }
+
+        @Test
         void shouldReturnOnlyNoticeAndNoSources_WhenAnswerIsInvalid() {
             RespuestaLlm llm = new RespuestaLlm("Dar 10 mg de algo.", List.of(FUENTE), false);
             when(llmGateway.consultar(PREGUNTA, SEGMENTOS)).thenReturn(Mono.just(llm));

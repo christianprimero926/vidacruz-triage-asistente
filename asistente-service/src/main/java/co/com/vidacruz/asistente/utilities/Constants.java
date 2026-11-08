@@ -8,7 +8,8 @@ import lombok.experimental.UtilityClass;
 public class Constants {
 
     public static final String RUTA_CORPUS = "corpus/protocolos.json";
-    public static final String FORMATO_SEGMENTO = "%s — %s: %s";
+    public static final String SEPARADOR_TITULO_SECCION = " — ";
+    public static final String FORMATO_SEGMENTO = "%s" + SEPARADOR_TITULO_SECCION + "%s: %s";
 
     public static final String RUTA_BASE = "/asistente";
     public static final String RUTA_CONSULTA = "/consulta";

@@ -17,6 +17,7 @@ import co.com.vidacruz.asistente.service.CompuertaRelevancia;
 import co.com.vidacruz.asistente.service.ConsultaService;
 import co.com.vidacruz.asistente.service.LlmGateway;
 import co.com.vidacruz.asistente.service.RagRetriever;
+import co.com.vidacruz.asistente.utilities.CitaCanonica;
 import co.com.vidacruz.asistente.validators.ConsultaValidator;
 import co.com.vidacruz.asistente.validators.RespuestaValidator;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -56,8 +57,9 @@ public class ConsultaServiceImpl implements ConsultaService {
                 .map(respuesta -> aRespuesta(pregunta, respuesta, segmentos));
     }
 
-    private ConsultaResponseDTO aRespuesta(String pregunta, RespuestaLlm respuesta,
+    private ConsultaResponseDTO aRespuesta(String pregunta, RespuestaLlm respuestaLlm,
                                          List<SegmentoRecuperado> segmentos) {
+        RespuestaLlm respuesta = CitaCanonica.aplicar(respuestaLlm, segmentos);
         if (Boolean.TRUE.equals(respuesta.sinProtocolo())) {
             return sinProtocolo(TIPO_SIN_PROTOCOLO);
         }
