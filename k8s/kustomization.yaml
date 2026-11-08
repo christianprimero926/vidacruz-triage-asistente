@@ -23,7 +23,7 @@ resources:
 images:
   - name: triage-service
     newName: REGISTRO_ACR/triage-service
-    newTag: ETIQUETA
+    newTag: "ETIQUETA"
   - name: asistente-service
     newName: REGISTRO_ACR/asistente-service
-    newTag: ETIQUETA
+    newTag: "ETIQUETA"

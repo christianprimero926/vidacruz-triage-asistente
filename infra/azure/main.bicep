@@ -9,8 +9,12 @@ param acrName string
 @description('Nombre del cluster AKS')
 param aksName string = 'vidacruz-aks'
 
-@description('Tamaño de la VM del único nodo')
+@description('Tamaño de la VM de los nodos')
 param nodeVmSize string = 'Standard_B2ms'
+
+@description('Número de nodos. Los complementos de AKS reservan casi todo un nodo de 2 vCPU, así que con nodos de ese tamaño hacen falta 2')
+@minValue(1)
+param nodeCount int = 2
 
 // Rol integrado AcrPull
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
@@ -42,7 +46,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-09-01' = {
       {
         name: 'system'
         mode: 'System'
-        count: 1
+        count: nodeCount
         vmSize: nodeVmSize
         osType: 'Linux'
         type: 'VirtualMachineScaleSets'
