@@ -232,7 +232,8 @@ class OutboxPublisherJobIT extends AbstractIT {
                 job.ejecutar().block(Duration.ofSeconds(30));
                 assertThat(contar("outbox_evento WHERE fecha_publicacion IS NULL")).isZero();
             });
-            assertThat(leer(List.of(id), 1)).hasSize(1);
+            // Al menos una vez: si el envío vence en el job pero llega al broker, el reintento lo repite
+            assertThat(campo(leer(List.of(id), 1), "eventoId").stream().distinct().toList()).hasSize(1);
             assertThat(gauge()).isZero();
         }
     }
