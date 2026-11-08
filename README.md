@@ -150,7 +150,7 @@ Los servicios no comparten librerías: el contrato entre ellos es el JSON del ev
 | Modo degradado del LLM | Si el proveedor cae, el servicio sigue vivo y responde 503 claro | [0004](docs/adr/0004-modo-degradado-y-resiliencia-llm.md) |
 | Alertas por webhook persistidas y con reintentos | Funciona con Slack y Teams, sobrevive a caídas y no filtra datos personales | [0005](docs/adr/0005-alertas-rf06-webhook.md) |
 | API key por servicio, fail-closed | Mínimo suficiente para esta fase, con ruta clara a Entra ID | [0006](docs/adr/0006-autenticacion-api-key.md) |
-| AKS de un nodo con datos en el clúster | Costo; el equivalente administrado está documentado | [0007](docs/adr/0007-despliegue-en-azure.md) |
+| AKS de dos nodos pequeños con datos en el clúster | Costo; el equivalente administrado está documentado | [0007](docs/adr/0007-despliegue-en-azure.md) |
 
 ## Contrato del evento Kafka
 
@@ -195,10 +195,11 @@ Cuando un paciente supera su SLA sin pasar a consulta, el monitor lo escala y, e
 
 ## Despliegue en Azure
 
-`infra/azure/main.bicep` crea el ACR y un AKS de un nodo con app routing; `k8s/` tiene los manifiestos (kustomize).
+`infra/azure/main.bicep` crea el ACR y un AKS de dos nodos con app routing; `k8s/` tiene los manifiestos (kustomize).
 
 ```bash
 export DB_PASSWORD=... TRIAGE_API_KEY=... ASISTENTE_API_KEY=...   # opcional: LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, WEBHOOK_ALERTAS_URL
+# opcional: NODE_VM_SIZE, NODE_COUNT y CONSTRUCCION=local (docker build y push, para suscripciones sin ACR Tasks)
 az login
 ./infra/azure/deploy.sh      # grupo de recursos, ACR, AKS, build de imágenes, secret y manifiestos
 ./infra/azure/destroy.sh     # borra el grupo de recursos
@@ -208,8 +209,14 @@ az login
 
 ### URL pública
 
-<!-- URL -->
-Aún no desplegado.
+Desplegado en AKS (East US), detrás del ingress:
+
+| Servicio | Swagger | API |
+| --- | --- | --- |
+| Triage | http://20.232.247.231/triage/swagger-ui.html | `http://20.232.247.231/triage/...` |
+| Asistente | http://20.232.247.231/asistente/swagger-ui.html | `http://20.232.247.231/asistente/...` |
+
+Las API keys del despliegue se entregan por correo, no van en el repositorio. Swagger no pide clave; para probar desde él, usa **Authorize** con la clave de cada servicio. El asistente usa `gpt-4.1-mini` en Azure AI Foundry.
 
 ## Observabilidad
 
